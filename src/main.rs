@@ -34,6 +34,7 @@ fn main() -> Result<()> {
     //* Create parser */
     let content = fs::read_dir("content")?;
 
+    //* Create index page */
     content.for_each(|item| {
         if let Ok(entry) = item
             && entry.file_type().is_ok()

@@ -1,5 +1,6 @@
 /target
 content
 /dev-target
+node_modules
 .DS_Store
 CLAUDE.md
