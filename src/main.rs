@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, File},
+    fs::{self, DirEntry, File},
     io::{Read, Write},
     ops::Not,
     path::{Display, Path},
@@ -112,6 +112,14 @@ struct Frontmatter {
     publish: Option<bool>,
 }
 
+fn is_valid_entry(entry: &DirEntry) -> bool {
+    let Ok(file_type) = entry.file_type() else {
+        return false;
+    };
+    file_type.is_dir()
+        || (file_type.is_file() && entry.path().extension().is_some_and(|ext| ext == "md"))
+}
+
 fn main() -> Result<()> {
     //* Start tracing subscriber */
     tracing_subscriber::fmt::init();
@@ -119,15 +127,8 @@ fn main() -> Result<()> {
     let _ = fs::create_dir("content");
     let _ = fs::create_dir("dist");
 
-    let content = fs::read_dir("content")?.filter(|f| {
-        f.as_ref().is_ok_and(|file| {
-            file.file_type().is_ok_and(|file_type| {
-                file_type.is_dir()
-                    || (file_type.is_file()
-                        && file.path().extension().is_some_and(|ext| ext.eq("md")))
-            })
-        })
-    });
+    //* Filter out invalid content */
+    let content = fs::read_dir("content")?.filter(|f| f.as_ref().is_ok_and(is_valid_entry));
 
     //* Create index page */
     let mut index_page_links: Vec<String> = vec![];
