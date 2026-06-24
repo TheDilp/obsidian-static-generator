@@ -1,6 +1,7 @@
 use std::{
     fs::{self},
     io::Read,
+    ops::Not,
 };
 
 use anyhow::Result;
@@ -20,11 +21,19 @@ fn main() -> Result<()> {
             if file_type.is_file()
                 && let Ok(mut file) = fs::File::open(entry.path())
             {
-                let mut buffer = String::new();
+                let mut file_content = String::new();
 
-                file.read_to_string(&mut buffer).unwrap_or_default();
+                file.read_to_string(&mut file_content).unwrap_or_default();
 
-                tracing::info!("{}", buffer);
+                if file_content.is_empty().not() {
+                    let parser = pulldown_cmark::Parser::new(&file_content);
+
+                    let mut html_output = String::new();
+
+                    pulldown_cmark::html::push_html(&mut html_output, parser);
+
+                    tracing::info!("{}", html_output);
+                }
             }
         }
     });
