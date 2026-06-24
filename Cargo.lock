@@ -433,6 +433,7 @@ dependencies = [
  "anyhow",
  "gray_matter",
  "pulldown-cmark",
+ "regex",
  "serde",
  "serde_json",
  "tera",
