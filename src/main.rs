@@ -2,10 +2,25 @@ use std::{
     fs::{self},
     io::Read,
     ops::Not,
+    sync::LazyLock,
 };
 
 use anyhow::Result;
 use gray_matter::{Matter, engine::YAML};
+use tera::{Context, Tera};
+
+static TERA_ENGINE: LazyLock<Tera> = LazyLock::new(|| {
+    //* Load templates */
+    let mut tera = match Tera::new("templates/**/*.html") {
+        Ok(t) => t,
+        Err(e) => {
+            println!("Parsing error(s): {}", e);
+            ::std::process::exit(1);
+        }
+    };
+    tera.autoescape_on(vec![".html"]);
+    tera
+});
 
 #[derive(serde::Deserialize, Debug)]
 struct Frontmatter {
@@ -47,7 +62,12 @@ fn main() -> Result<()> {
 
                         pulldown_cmark::html::push_html(&mut html_output, parser);
 
-                        tracing::info!("{:?}", html_output);
+                        let mut context = Context::new();
+                        context.insert("content", &html_output);
+
+                        let rendered = TERA_ENGINE.render("base.html", &context).unwrap();
+
+                        tracing::info!("{}", rendered);
                     }
                 }
             }
