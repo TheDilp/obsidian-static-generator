@@ -2,7 +2,7 @@ use std::{
     fs::{self, DirEntry, File},
     io::{Read, Write},
     ops::Not,
-    path::{Display, Path},
+    path::Display,
     sync::LazyLock,
 };
 
@@ -92,12 +92,15 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
             }
             let rendered = rendered.unwrap();
             let current_path = path.to_string().replace(".md", ".html");
+            let new_path = &format!("dist/{}", current_path).replace(ROOT_DIR, "");
 
-            let new_path = &format!("dist/{}", current_path).replace("/content", "");
+            let mut path_segments = new_path.split("/").collect::<Vec<&str>>();
 
-            let render_path = Path::new(new_path);
+            let render_path = path_segments.pop().unwrap_or_default();
+            let dirs_path = path_segments.join("/");
 
-            let render_file = fs::File::create(render_path);
+            let _ = fs::create_dir_all(&dirs_path);
+            let render_file = fs::File::create(format!("{}/{}", dirs_path, render_path));
 
             if let Err(err) = render_file {
                 return Err(FileRenderError::Create(err));
@@ -162,7 +165,7 @@ fn process_content(
         let path = entry.path();
 
         if file_type.is_file()
-            && let Ok(mut file) = fs::File::open(path)
+            && let Ok(mut file) = fs::File::open(&path)
         {
             let render_result = render_file(&mut file, &title, &entry.path().display());
 
@@ -180,22 +183,45 @@ fn process_content(
                         tracing::info!("⏭️ FILE NOT PUBLISHED FOR FILE \"{}\" | SKIPPING", title);
                         process_result_count.skipped += 1;
                     }
-                    FileRenderError::Create(err) | FileRenderError::Write(err) => {
-                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
+                    FileRenderError::Create(err) => {
+                        tracing::error!(
+                            "🔴 ERROR WITH CREATING FILE \"{}\" | ERROR: {}",
+                            title,
+                            err
+                        );
+                        process_result_count.errored += 1;
+                    }
+                    FileRenderError::Write(err) => {
+                        tracing::error!(
+                            "🔴 ERROR WITH WRITING FILE \"{}\" | ERROR: {}",
+                            title,
+                            err
+                        );
                         process_result_count.errored += 1;
                     }
                     FileRenderError::Render(err) => {
-                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
+                        tracing::error!(
+                            "🔴 ERROR WITH RENDERING FILE \"{}\" | ERROR: {}",
+                            title,
+                            err
+                        );
                         process_result_count.errored += 1;
                     }
                     FileRenderError::FrontmatterParsing(err) => {
-                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
+                        tracing::error!(
+                            "🔴 ERROR WITH FRONTMATTER PARSING FILE \"{}\" | ERROR: {}",
+                            title,
+                            err
+                        );
                         process_result_count.errored += 1;
                     }
                 }
             }
-        } else if file_type.is_dir() {
-            tracing::info!("THIS IS A DIRECTORY")
+        } else if file_type.is_dir()
+            && let Some(dir_path) = path.to_str()
+        {
+            let content = get_valid_entries_from_dir(dir_path);
+            process_content(content, index_page_links, process_result_count);
         }
     }
 }
@@ -214,9 +240,11 @@ fn main() {
 
     let mut index_page_links: Vec<String> = vec![];
 
+    let start = std::time::Instant::now();
     //* Process content starting with root directory */
     process_content(content, &mut index_page_links, &mut process_result_count);
 
+    println!("\n");
     println!("\n");
     tracing::info!(
         "🟢 NUMBER OF RENDERED FILES: {}",
@@ -231,8 +259,9 @@ fn main() {
         process_result_count.errored
     );
     tracing::info!(
-        "📊 TOTAL FILES PROCESSED: {}",
-        process_result_count.success + process_result_count.skipped + process_result_count.errored
+        "📊 TOTAL FILES PROCESSED: {} IN {} milliseconds.",
+        process_result_count.success + process_result_count.skipped + process_result_count.errored,
+        start.elapsed().as_millis()
     );
 
     let mut index_context = Context::new();
