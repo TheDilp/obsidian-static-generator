@@ -116,7 +116,9 @@ fn main() -> Result<()> {
     //* Start tracing subscriber */
     tracing_subscriber::fmt::init();
 
-    //* Create parser */
+    let _ = fs::create_dir("content");
+    let _ = fs::create_dir("dist");
+
     let content = fs::read_dir("content")?.filter(|f| {
         f.as_ref().is_ok_and(|file| {
             file.file_type().is_ok_and(|file_type| {
