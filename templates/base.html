@@ -11,7 +11,9 @@
     {% endif %}
   </head>
 
-  <body class="bg-zinc-950 text-white">
-    {{ content | safe }}
+  <body class="bg-zinc-950">
+    <article class="prose lg:prose-xl text-white prose-headings:text-white">
+      {{ content | safe }}
+    </article>
   </body>
 </html>
