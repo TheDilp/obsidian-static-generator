@@ -46,6 +46,13 @@ struct Frontmatter {
     publish: Option<bool>,
 }
 
+#[derive(Default)]
+struct ContentProcessResult {
+    success: u64,
+    skipped: u64,
+    errored: u64,
+}
+
 type Content = Vec<Result<DirEntry, std::io::Error>>;
 
 fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String, FileRenderError> {
@@ -139,7 +146,7 @@ fn get_valid_entries_from_dir(dir: &str) -> Content {
 fn process_content(
     content: Content,
     index_page_links: &mut Vec<String>,
-    errored_files: &mut Vec<String>,
+    process_result_count: &mut ContentProcessResult,
 ) {
     for item in content {
         //* Checked previously when filtering invalid content */
@@ -162,25 +169,28 @@ fn process_content(
             if let Ok(new_path) = render_result {
                 index_page_links.push(new_path);
                 tracing::info!("🟢 SUCCESSFULLY RENDERED FILE \"{}\"", title);
+                process_result_count.success += 1;
             } else if let Err(err) = render_result {
                 match err {
                     FileRenderError::ContentEmpty => {
-                        tracing::info!("⏭️ FILE CONTENT EMPTY FOR FILE \"{}\" | SKIPPING", title)
+                        tracing::info!("⏭️ FILE CONTENT EMPTY FOR FILE \"{}\" | SKIPPING", title);
+                        process_result_count.skipped += 1;
                     }
                     FileRenderError::NotPublished => {
-                        tracing::info!("⏭️ FILE NOT PUBLISHED FOR FILE \"{}\" | SKIPPING", title)
+                        tracing::info!("⏭️ FILE NOT PUBLISHED FOR FILE \"{}\" | SKIPPING", title);
+                        process_result_count.skipped += 1;
                     }
                     FileRenderError::Create(err) | FileRenderError::Write(err) => {
                         tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
-                        errored_files.push(title);
+                        process_result_count.errored += 1;
                     }
                     FileRenderError::Render(err) => {
                         tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
-                        errored_files.push(title);
+                        process_result_count.errored += 1;
                     }
                     FileRenderError::FrontmatterParsing(err) => {
                         tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
-                        errored_files.push(title);
+                        process_result_count.errored += 1;
                     }
                 }
             }
@@ -200,14 +210,30 @@ fn main() {
     //* Get valid content in root directory */
     let content = get_valid_entries_from_dir(ROOT_DIR);
 
-    //* Track all links and errored files */
+    let mut process_result_count = ContentProcessResult::default();
+
     let mut index_page_links: Vec<String> = vec![];
-    let mut errored_files: Vec<String> = vec![];
 
     //* Process content starting with root directory */
-    process_content(content, &mut index_page_links, &mut errored_files);
+    process_content(content, &mut index_page_links, &mut process_result_count);
 
-    tracing::info!("NUMBER OF ERRORED FILES: {}", errored_files.len());
+    println!("\n");
+    tracing::info!(
+        "🟢 NUMBER OF RENDERED FILES: {}",
+        process_result_count.success
+    );
+    tracing::info!(
+        "⏭️ NUMBER OF SKIPPED FILES: {}",
+        process_result_count.skipped
+    );
+    tracing::info!(
+        "🔴 NUMBER OF ERRORED FILES: {}",
+        process_result_count.errored
+    );
+    tracing::info!(
+        "📊 TOTAL FILES PROCESSED: {}",
+        process_result_count.success + process_result_count.skipped + process_result_count.errored
+    );
 
     let mut index_context = Context::new();
     index_context.insert("links", &index_page_links);
