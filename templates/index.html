@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
 <ul>
-  {% for link in links %} {{link}} {% endfor %}
+  {% block content %} {% for link in links %} {{link | safe}} {% endfor %} {%
+  endblock content %}
 </ul>

@@ -25,6 +25,7 @@ static TERA_ENGINE: LazyLock<Tera> = LazyLock::new(|| {
 });
 
 const ROOT_DIR: &str = "content";
+const OUTPUT_DIR: &str = "dist";
 
 #[derive(Debug, Error)]
 enum FileRenderError {
@@ -85,14 +86,14 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
             context.insert("title", &title);
             context.insert("content", &html_output);
 
-            let rendered = TERA_ENGINE.render("base.html", &context);
+            let rendered = TERA_ENGINE.render("article.html", &context);
 
             if let Err(err) = rendered {
                 return Err(FileRenderError::Render(err));
             }
             let rendered = rendered.unwrap();
             let current_path = path.to_string().replace(".md", ".html");
-            let new_path = &format!("dist/{}", current_path).replace(ROOT_DIR, "");
+            let new_path = &format!("{}/{}", OUTPUT_DIR, current_path).replace(ROOT_DIR, "");
 
             let mut path_segments = new_path.split("/").collect::<Vec<&str>>();
 
@@ -231,7 +232,7 @@ fn main() {
     tracing_subscriber::fmt::init();
 
     let _ = fs::create_dir(ROOT_DIR);
-    let _ = fs::create_dir("dist");
+    let _ = fs::create_dir(OUTPUT_DIR);
 
     //* Get valid content in root directory */
     let content = get_valid_entries_from_dir(ROOT_DIR);
@@ -264,6 +265,16 @@ fn main() {
         start.elapsed().as_millis()
     );
 
-    let mut index_context = Context::new();
-    index_context.insert("links", &index_page_links);
+    let index_file_create = fs::File::create(format!("{}/index.html", OUTPUT_DIR));
+
+    if let Ok(mut index_file) = index_file_create {
+        let mut index_context = Context::new();
+        index_context.insert("links", &index_page_links);
+
+        let content = TERA_ENGINE.render("index.html", &index_context).unwrap();
+
+        index_file.write_all(&content.into_bytes()).unwrap();
+    } else if let Err(err) = index_file_create {
+        tracing::error!("{}", err);
+    }
 }
