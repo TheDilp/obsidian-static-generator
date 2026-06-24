@@ -46,6 +46,8 @@ struct Frontmatter {
     publish: Option<bool>,
 }
 
+type Content = Vec<Result<DirEntry, std::io::Error>>;
+
 fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String, FileRenderError> {
     let mut file_content = String::new();
 
@@ -124,7 +126,7 @@ fn is_valid_entry(entry: &DirEntry) -> bool {
         || (file_type.is_file() && entry.path().extension().is_some_and(|ext| ext == "md"))
 }
 
-fn get_valid_entries_from_dir(dir: &str) -> Vec<Result<DirEntry, std::io::Error>> {
+fn get_valid_entries_from_dir(dir: &str) -> Content {
     if let Ok(directory) = fs::read_dir(dir) {
         directory
             .filter(|f| f.as_ref().is_ok_and(is_valid_entry))
@@ -134,21 +136,11 @@ fn get_valid_entries_from_dir(dir: &str) -> Vec<Result<DirEntry, std::io::Error>
     }
 }
 
-fn main() {
-    //* Start tracing subscriber */
-    tracing_subscriber::fmt::init();
-
-    let _ = fs::create_dir(ROOT_DIR);
-    let _ = fs::create_dir("dist");
-
-    //* Filter out invalid content */
-    let content = get_valid_entries_from_dir(ROOT_DIR);
-
-    //* Create index page */
-    let mut index_page_links: Vec<String> = vec![];
-
-    let mut errored_files: Vec<String> = vec![];
-
+fn process_content(
+    content: Content,
+    index_page_links: &mut Vec<String>,
+    errored_files: &mut Vec<String>,
+) {
     for item in content {
         //* Checked previously when filtering invalid content */
         let entry = item.unwrap();
@@ -179,22 +171,42 @@ fn main() {
                         tracing::info!("⏭️ FILE NOT PUBLISHED FOR FILE \"{}\" | SKIPPING", title)
                     }
                     FileRenderError::Create(err) | FileRenderError::Write(err) => {
-                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
+                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
+                        errored_files.push(title);
                     }
                     FileRenderError::Render(err) => {
-                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
+                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
+                        errored_files.push(title);
                     }
                     FileRenderError::FrontmatterParsing(err) => {
-                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
+                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err);
+                        errored_files.push(title);
                     }
                 }
-                errored_files.push(title);
             }
         } else if file_type.is_dir() {
             tracing::info!("THIS IS A DIRECTORY")
         }
     }
-    let mut index_context = Context::new();
+}
 
+fn main() {
+    //* Start tracing subscriber */
+    tracing_subscriber::fmt::init();
+
+    let _ = fs::create_dir(ROOT_DIR);
+    let _ = fs::create_dir("dist");
+
+    //* Get valid content in root directory */
+    let content = get_valid_entries_from_dir(ROOT_DIR);
+
+    //* Track all links and errored files */
+    let mut index_page_links: Vec<String> = vec![];
+    let mut errored_files: Vec<String> = vec![];
+
+    //* Process content starting with root directory */
+    process_content(content, &mut index_page_links, &mut errored_files);
+
+    let mut index_context = Context::new();
     index_context.insert("links", &index_page_links);
 }
