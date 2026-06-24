@@ -207,6 +207,8 @@ fn main() {
     //* Process content starting with root directory */
     process_content(content, &mut index_page_links, &mut errored_files);
 
+    tracing::info!("NUMBER OF ERRORED FILES: {}", errored_files.len());
+
     let mut index_context = Context::new();
     index_context.insert("links", &index_page_links);
 }
