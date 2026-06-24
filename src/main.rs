@@ -5,7 +5,12 @@ use std::{
 };
 
 use anyhow::Result;
-use gray_matter::{Matter, ParsedEntity, engine::YAML};
+use gray_matter::{Matter, engine::YAML};
+
+#[derive(serde::Deserialize, Debug)]
+struct Frontmatter {
+    publish: Option<bool>,
+}
 
 fn main() -> Result<()> {
     //* Start tracing subscriber */
@@ -30,15 +35,20 @@ fn main() -> Result<()> {
                     //* Extract the frontmatter first */
                     let matter = Matter::<YAML>::new();
 
-                    let parsed_matter: ParsedEntity = matter.parse(&file_content).unwrap();
+                    let parsed_matter = matter.parse::<Frontmatter>(&file_content).unwrap();
 
-                    tracing::info!("{:?}", parsed_matter);
+                    if parsed_matter
+                        .data
+                        .is_some_and(|matter| matter.publish.is_some_and(|published| published))
+                    {
+                        let parser = pulldown_cmark::Parser::new(&parsed_matter.content);
 
-                    let parser = pulldown_cmark::Parser::new(&file_content);
+                        let mut html_output = String::new();
 
-                    let mut html_output = String::new();
+                        pulldown_cmark::html::push_html(&mut html_output, parser);
 
-                    pulldown_cmark::html::push_html(&mut html_output, parser);
+                        tracing::info!("{:?}", html_output);
+                    }
                 }
             }
         }
