@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::Result;
+use gray_matter::{Matter, ParsedEntity, engine::YAML};
 
 fn main() -> Result<()> {
     //* Start tracing subscriber */
@@ -26,13 +27,18 @@ fn main() -> Result<()> {
                 file.read_to_string(&mut file_content).unwrap_or_default();
 
                 if file_content.is_empty().not() {
+                    //* Extract the frontmatter first */
+                    let matter = Matter::<YAML>::new();
+
+                    let parsed_matter: ParsedEntity = matter.parse(&file_content).unwrap();
+
+                    tracing::info!("{:?}", parsed_matter);
+
                     let parser = pulldown_cmark::Parser::new(&file_content);
 
                     let mut html_output = String::new();
 
                     pulldown_cmark::html::push_html(&mut html_output, parser);
-
-                    tracing::info!("{}", html_output);
                 }
             }
         }
