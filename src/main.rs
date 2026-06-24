@@ -6,7 +6,7 @@ use std::{
     sync::LazyLock,
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use gray_matter::{Matter, engine::YAML};
 use tera::{Context, Tera};
 use thiserror::Error;
@@ -24,6 +24,8 @@ static TERA_ENGINE: LazyLock<Tera> = LazyLock::new(|| {
     tera
 });
 
+const ROOT_DIR: &str = "content";
+
 #[derive(Debug, Error)]
 enum FileRenderError {
     #[error("Failed to render file | ERROR: {0}")]
@@ -38,6 +40,10 @@ enum FileRenderError {
     ContentEmpty,
     #[error("File is NOT publish = true")]
     NotPublished,
+}
+#[derive(serde::Deserialize, Debug)]
+struct Frontmatter {
+    publish: Option<bool>,
 }
 
 fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String, FileRenderError> {
@@ -107,28 +113,36 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
     }
 }
 
-#[derive(serde::Deserialize, Debug)]
-struct Frontmatter {
-    publish: Option<bool>,
-}
-
 fn is_valid_entry(entry: &DirEntry) -> bool {
     let Ok(file_type) = entry.file_type() else {
+        return false;
+    };
+    if entry.file_name().is_empty() {
         return false;
     };
     file_type.is_dir()
         || (file_type.is_file() && entry.path().extension().is_some_and(|ext| ext == "md"))
 }
 
-fn main() -> Result<()> {
+fn get_valid_entries_from_dir(dir: &str) -> Vec<Result<DirEntry, std::io::Error>> {
+    if let Ok(directory) = fs::read_dir(dir) {
+        directory
+            .filter(|f| f.as_ref().is_ok_and(is_valid_entry))
+            .collect::<Vec<Result<DirEntry, std::io::Error>>>()
+    } else {
+        vec![]
+    }
+}
+
+fn main() {
     //* Start tracing subscriber */
     tracing_subscriber::fmt::init();
 
-    let _ = fs::create_dir("content");
+    let _ = fs::create_dir(ROOT_DIR);
     let _ = fs::create_dir("dist");
 
     //* Filter out invalid content */
-    let content = fs::read_dir("content")?.filter(|f| f.as_ref().is_ok_and(is_valid_entry));
+    let content = get_valid_entries_from_dir(ROOT_DIR);
 
     //* Create index page */
     let mut index_page_links: Vec<String> = vec![];
@@ -136,62 +150,51 @@ fn main() -> Result<()> {
     let mut errored_files: Vec<String> = vec![];
 
     for item in content {
-        if let Ok(entry) = item
-            && entry.file_type().is_ok()
+        //* Checked previously when filtering invalid content */
+        let entry = item.unwrap();
+        let file_type = entry.file_type().unwrap();
+        //* Likewise title is validated to NOT be empty */
+        let title = entry
+            .file_name()
+            .to_str()
+            .map(|s| s.to_string().replace(".md", ""))
+            .unwrap_or_default();
+
+        let path = entry.path();
+
+        if file_type.is_file()
+            && let Ok(mut file) = fs::File::open(path)
         {
-            let title = entry
-                .file_name()
-                .to_str()
-                .map(|s| s.to_string().replace(".md", ""))
-                .unwrap_or_default();
+            let render_result = render_file(&mut file, &title, &entry.path().display());
 
-            if title.is_empty() {
-                return Err(anyhow!("Title is empty"));
-            }
-
-            let path = entry.path();
-
-            let file_type = entry.file_type().unwrap();
-            if file_type.is_file()
-                && let Ok(mut file) = fs::File::open(path)
-            {
-                let render_result = render_file(&mut file, &title, &entry.path().display());
-
-                if let Ok(new_path) = render_result {
-                    index_page_links.push(new_path);
-                    tracing::info!("🟢 SUCCESSFULLY RENDERED FILE \"{}\"", title);
-                } else if let Err(err) = render_result {
-                    match err {
-                        FileRenderError::ContentEmpty => {
-                            tracing::info!(
-                                "⏭️ FILE CONTENT EMPTY FOR FILE \"{}\" | SKIPPING",
-                                title
-                            )
-                        }
-                        FileRenderError::NotPublished => {
-                            tracing::info!(
-                                "⏭️ FILE NOT PUBLISHED FOR FILE \"{}\" | SKIPPING",
-                                title
-                            )
-                        }
-                        FileRenderError::Create(err) | FileRenderError::Write(err) => {
-                            tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
-                        }
-                        FileRenderError::Render(err) => {
-                            tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
-                        }
-                        FileRenderError::FrontmatterParsing(err) => {
-                            tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
-                        }
+            if let Ok(new_path) = render_result {
+                index_page_links.push(new_path);
+                tracing::info!("🟢 SUCCESSFULLY RENDERED FILE \"{}\"", title);
+            } else if let Err(err) = render_result {
+                match err {
+                    FileRenderError::ContentEmpty => {
+                        tracing::info!("⏭️ FILE CONTENT EMPTY FOR FILE \"{}\" | SKIPPING", title)
                     }
-                    errored_files.push(title);
+                    FileRenderError::NotPublished => {
+                        tracing::info!("⏭️ FILE NOT PUBLISHED FOR FILE \"{}\" | SKIPPING", title)
+                    }
+                    FileRenderError::Create(err) | FileRenderError::Write(err) => {
+                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
+                    }
+                    FileRenderError::Render(err) => {
+                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
+                    }
+                    FileRenderError::FrontmatterParsing(err) => {
+                        tracing::error!("🔴 ERROR WITH FILE \"{}\" | ERROR: {}", title, err)
+                    }
                 }
+                errored_files.push(title);
             }
+        } else if file_type.is_dir() {
+            tracing::info!("THIS IS A DIRECTORY")
         }
     }
     let mut index_context = Context::new();
 
     index_context.insert("links", &index_page_links);
-
-    Ok(())
 }
