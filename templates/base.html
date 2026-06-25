@@ -20,6 +20,8 @@
         {% block nav_links %} {% endblock nav_links %}
       </ul>
     </section>
-    <main class="flex-1 flex">{% block content %}{% endblock content %}</main>
+    <main class="flex-1 flex flex-col">
+      {% block content %}{% endblock content %}
+    </main>
   </body>
 </html>

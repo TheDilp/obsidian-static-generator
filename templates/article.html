@@ -1,13 +1,27 @@
 {% extends "base.html" %} {% block content %}
-<article class="h-full prose-h1:underline prose-li:my-1 prose max-w-full mx-auto w-full p-14 prose-p:my-4 prose-headings:my-4 overflow-y-auto">
+<article
+  class="h-full prose-h1:underline prose-li:my-1 prose max-w-full mx-auto w-full p-14 prose-p:my-4 prose-headings:my-4 overflow-y-auto">
   <h1>{{title | safe }}</h1>
-  {{ content | spaceless | safe }}</article>
+  <div>
+    {%for tag in tags%}
+    <span class="py-1 px-2 text-xs bg-zinc-600 overflow-hidden rounded-md">{{tag | replace(from="-", to=" ") |
+      safe}}</span>
+    {%endfor%}
+  </div>
+  {{ content | spaceless | safe }}
+
+  <footer>
+
+    Word count: {{content | wordcount}}
+  </footer>
+
+</article>
 
 {% endblock content %} {% block nav_links %}
- {% for link in links | sort %}
-  <li>
-    <a href="{{ link | replace(from=".md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
-      split(pat="/") | last }} </a>
-  </li>
-  {% endfor %}
+{% for link in links | sort %}
+<li>
+  <a href="{{ link | replace(from=" .md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
+    split(pat="/") | last }} </a>
+</li>
+{% endfor %}
 {% endblock nav_links %}

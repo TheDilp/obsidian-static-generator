@@ -60,6 +60,7 @@ enum FileRenderError {
 #[derive(serde::Deserialize, Debug)]
 struct Frontmatter {
     publish: Option<bool>,
+    tags: Option<Vec<String>>,
 }
 
 #[derive(Default)]
@@ -91,6 +92,7 @@ fn render_file(
         if let Ok(frontmatter) = parsed_matter {
             if frontmatter
                 .data
+                .as_ref()
                 .is_none_or(|fm| fm.publish.is_none_or(|publish| !publish))
             {
                 return Err(FileRenderError::NotPublished);
@@ -103,10 +105,16 @@ fn render_file(
 
             pulldown_cmark::html::push_html(&mut html_output, parser);
 
+            let tags = frontmatter
+                .data
+                .map(|s| s.tags.unwrap_or_default())
+                .unwrap_or_default();
+
             let mut context = Context::new();
             context.insert("title", &title);
             context.insert("content", &html_output);
             context.insert("links", file_index);
+            context.insert("tags", &tags);
 
             let rendered = TERA_ENGINE.render("article.html", &context);
 
