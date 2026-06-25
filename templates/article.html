@@ -4,7 +4,11 @@
   <h1>{{title | safe }}</h1>
   {%if image%}
 
-  <img src="/{{image}}" alt="{{title}}"/>
+
+  <aside
+    class="not-prose w-full md:float-right md:clear-right md:ml-6 md:w-56 mb-6 border border-ui-border rounded-lg overflow-hidden bg-surface text-sm">
+    <img class="w-full object-cover max-h-72 block cursor-zoom-in" src="/{{image}}" alt="{{title}}" />
+  </aside>
   {%endif%}
   <div>
     {%for tag in tags%}
