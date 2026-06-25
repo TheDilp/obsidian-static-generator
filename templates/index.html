@@ -18,7 +18,7 @@
       <h3 class="text-lg font-bold my-1">{{ key }}</h3>
       <ul class="border rounded-md w-full overflow-hidden border-zinc-800">
         {% for link in link_list%}
-        <li class="odd:bg-zinc-900 p-1.5">
+        <li class="odd:bg-zinc-800 p-1.5">
           <a href="{{ link | replace(from=".md", to=".html" ) }}" class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"> {{ link | replace(from=".md",
             to="") |
             split(pat="/") | last }} </a>
