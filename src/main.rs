@@ -34,6 +34,8 @@ static MARKDOWN_PARSER_OPTIONS: LazyLock<Options> = LazyLock::new(|| {
     options.insert(Options::ENABLE_FOOTNOTES);
     options.insert(Options::ENABLE_TASKLISTS);
     options.insert(Options::ENABLE_WIKILINKS);
+    options.insert(Options::ENABLE_SUBSCRIPT);
+    options.insert(Options::ENABLE_SUPERSCRIPT);
     options.insert(Options::ENABLE_MATH);
 
     options
