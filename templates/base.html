@@ -11,7 +11,8 @@
     {% endif %}
   </head>
 
-  <body class="bg-zinc-800 prose-p:text-white h-dvh">
-    {% block content %}test{% endblock content %}
+  <body class="bg-zinc-800 prose-p:text-white h-dvh flex flex-nowrap w-dvw">
+    <section class="bg-zinc-900 lg:w-80"></section>
+    <main>{% block content %}test{% endblock content %}</main>
   </body>
 </html>
