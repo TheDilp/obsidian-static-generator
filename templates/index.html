@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 
 <ul>
-  {% block content %} {% for link in links %} {{link | safe}} {% endfor %} {%
-  endblock content %}
+  {% block content %} {% for link in links %}
+  <li>
+    <a href="{{link}}" class="text-white"> {{link | safe}} </a>
+  </li>
+  {% endfor %} {% endblock content %}
 </ul>
