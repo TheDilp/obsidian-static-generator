@@ -793,6 +793,12 @@
   .px-14 {
     padding-inline: calc(var(--spacing) * 14);
   }
+  .px-28 {
+    padding-inline: calc(var(--spacing) * 28);
+  }
+  .px-32 {
+    padding-inline: calc(var(--spacing) * 32);
+  }
   .py-0 {
     padding-block: 0;
   }
@@ -801,6 +807,9 @@
   }
   .py-1 {
     padding-block: var(--spacing);
+  }
+  .py-14 {
+    padding-block: calc(var(--spacing) * 14);
   }
   .pb-2 {
     padding-bottom: calc(var(--spacing) * 2);
@@ -931,6 +940,26 @@
   .prose-li\:my-1 {
     & :is(:where(li):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
       margin-block: var(--spacing);
+    }
+  }
+  .prose-hr\:my-0 {
+    & :is(:where(hr):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      margin-block: 0;
+    }
+  }
+  .prose-hr\:border-zinc-700 {
+    & :is(:where(hr):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      border-color: var(--color-zinc-700);
+    }
+  }
+  .prose-hr\:border-zinc-800 {
+    & :is(:where(hr):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      border-color: var(--color-zinc-800);
+    }
+  }
+  .prose-hr\:border-zinc-900 {
+    & :is(:where(hr):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      border-color: var(--color-zinc-900);
     }
   }
 }
