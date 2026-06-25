@@ -1,10 +1,9 @@
 {% extends "base.html" %}
 {% block nav_links %}
 {% for key, link_list in links %}
-{% for link in link_list | sort %}
+{% for link in link_list | sort(attribute="title")  %}
 <li>
-  <a href="{{ link | replace(from=" .md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
-    split(pat="/") | last }} </a>
+  <a href="{{ link.link  }}" class="text-white"> {{ link.title }} </a>
 </li>
 {%endfor%}
 {% endfor %}
@@ -17,11 +16,9 @@
     <li>
       <h3 class="text-lg font-bold my-1">{{ key }}</h3>
       <ul class="border rounded-md w-full overflow-hidden border-zinc-800">
-        {% for link in link_list%}
+        {% for link in link_list | sort(attribute="title") %}
         <li class="odd:bg-zinc-800 p-1.5">
-          <a href="{{ link | replace(from=".md", to=".html" ) }}" class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"> {{ link | replace(from=".md",
-            to="") |
-            split(pat="/") | last }} </a>
+          <a href="{{ link.link }}" class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"> {{ link.title }} </a>
         </li>
         {% endfor %}
       </ul>

@@ -1,22 +1,21 @@
 {% extends "base.html" %}
 
 {% block nav_links %}
-{% for link in links | sort %}
+{% for link in links | sort(attribute="title") %}
 <li>
-  <a href="{{ link | replace(from=" .md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
-    split(pat="/") | last }} </a>
+  <a href="{{ link.link }}" class="text-white"> {{ link.title }} </a>
 </li>
 {% endfor %}
 {% endblock nav_links %}
 {% block content %}
 <article
-  class="h-full max-w-2xl prose-hr:my-0 prose-h1:underline prose-li:my-1 prose mx-auto w-full py-8 prose-p:my-4 prose-headings:my-4 overflow-y-auto">
-  <h1>{{title | safe }}</h1>
+  class="h-full xl:max-w-4xl prose-hr:my-0 prose-h1:underline prose-li:my-1 prose mx-auto w-full py-8 prose-p:my-4 prose-headings:my-4 overflow-y-auto">
+  <h1>{{ title | safe }}</h1>
   {%if image%}
 
 
   <aside
-    class="not-prose w-full md:float-right md:clear-right md:ml-6 md:w-56 mb-6 border border-ui-border rounded-lg overflow-hidden bg-surface text-sm">
+    class="not-prose w-full md:float-right md:clear-right md:ml-6 md:w-56 mb-6 rounded-lg overflow-hidden text-sm">
     <img class="w-full object-cover max-h-72 block cursor-zoom-in" src="/{{image}}" alt="{{title}}" />
   </aside>
   {%endif%}

@@ -10,6 +10,7 @@ use std::{
 use anyhow::Result;
 use gray_matter::{Matter, engine::YAML};
 use pulldown_cmark::Options;
+use serde::Serialize;
 use tera::{Context, Tera};
 use thiserror::Error;
 
@@ -80,9 +81,15 @@ struct ContentProcessResult {
 
 type Content = Vec<Result<DirEntry, std::io::Error>>;
 
+#[derive(Serialize, Debug)]
+struct MarkdownFileLink {
+    title: String,
+    link: String,
+}
+
 #[derive(Default)]
 struct FileIndex {
-    markdown_files: HashSet<String>,
+    markdown_files: Vec<MarkdownFileLink>,
     image_files: HashSet<String>,
     markdown_image_files: HashSet<String>,
 }
@@ -258,8 +265,21 @@ fn index_files(content: &Content, file_index: &mut FileIndex) {
                                 .as_ref()
                                 .is_some_and(|fm| fm.publish.is_some_and(|publish| publish))
                         {
-                            let key = path.to_str().map(|s| s.to_string()).unwrap_or_default();
-                            file_index.markdown_files.insert(key);
+                            let link = path
+                                .to_str()
+                                .map(|s| format!("/{}/{}", OUTPUT_DIR, s).replace(".md", ".html"))
+                                .unwrap_or_default();
+
+                            let title = entry
+                                .file_name()
+                                .to_str()
+                                //Todo: CLEAR OTHER FILE EXTENSIONS USING REGEX
+                                .map(|s| s.to_string().replace(".md", ""))
+                                .unwrap_or_default();
+
+                            file_index
+                                .markdown_files
+                                .push(MarkdownFileLink { title, link });
                             let fm = frontmatter.data.unwrap();
                             if let Some(imgs) = fm.image {
                                 for img in imgs {
@@ -302,13 +322,6 @@ fn process_content(
             true
         } else {
             metadata.is_file()
-                && index.markdown_files.contains(
-                    &item
-                        .path()
-                        .to_str()
-                        .map(|s| s.to_string())
-                        .unwrap_or_default(),
-                )
         }
     });
 
@@ -424,17 +437,13 @@ fn main() {
 
     let index_file_create = fs::File::create(format!("{}/index.html", OUTPUT_DIR));
 
-    println!("{:?}", index.markdown_image_files);
-
     if let Ok(mut index_file) = index_file_create {
         let mut index_context = Context::new();
 
-        let mut grouped_index: HashMap<char, Vec<String>> = HashMap::new();
+        let mut grouped_index: HashMap<char, Vec<MarkdownFileLink>> = HashMap::new();
 
         for item in index.markdown_files {
-            if let Some(file_name) = item.split("/").last()
-                && let Some(letter) = file_name.chars().next()
-            {
+            if let Some(letter) = item.title.chars().next() {
                 grouped_index.entry(letter).or_default().push(item);
             };
         }
