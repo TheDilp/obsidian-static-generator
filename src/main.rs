@@ -68,6 +68,8 @@ enum FileRenderError {
 struct Frontmatter {
     publish: Option<bool>,
     tags: Option<Vec<String>>,
+    #[serde(rename = "Image")]
+    pub image: Option<Vec<String>>,
 }
 
 #[derive(Default)]
@@ -82,6 +84,7 @@ type Content = Vec<Result<DirEntry, std::io::Error>>;
 struct FileIndex {
     markdown_files: HashSet<String>,
     image_files: HashSet<String>,
+    markdown_image_files: HashSet<String>,
 }
 
 fn render_file(
@@ -117,23 +120,40 @@ fn render_file(
 
             pulldown_cmark::html::push_html(&mut html_output, parser);
 
+            let mut context = Context::new();
+            context.insert("title", &title);
+            context.insert("content", &html_output);
+            context.insert("links", &file_index.markdown_files);
+
+            if let Some(fm) = frontmatter.data.as_ref()
+                && fm.image.is_some()
+                && let Some(image) = fm.image.as_ref().unwrap().first()
+            {
+                let image_title = image.replace("[[", "").replace("]]", "");
+                let image_path = file_index
+                    .image_files
+                    .iter()
+                    .find(|path| path.ends_with(image_title.as_str()));
+                if let Some(path) = image_path {
+                    let new_path = format!("{}/{}", OUTPUT_DIR, path);
+                    let mut dirs_path = new_path.split("/").collect::<Vec<&str>>();
+                    dirs_path.pop();
+                    let dirs_path = dirs_path.join("/");
+                    let _ = fs::create_dir_all(&dirs_path).inspect(|_| {
+                        let res = fs::copy(path, &new_path);
+                        if res.is_ok() {
+                            context.insert("image", &path);
+                        }
+                    });
+                }
+            }
+
             let tags = frontmatter
                 .data
                 .map(|s| s.tags.unwrap_or_default())
                 .unwrap_or_default();
 
-            let mut context = Context::new();
-            context.insert("title", &title);
-            context.insert("content", &html_output);
-            context.insert("links", &file_index.markdown_files);
             context.insert("tags", &tags);
-
-            let rendered = TERA_ENGINE.render("article.html", &context);
-
-            if let Err(err) = rendered {
-                return Err(FileRenderError::Render(err));
-            }
-            let rendered = rendered.unwrap();
             let current_path = path.to_string().replace(".md", ".html");
             let new_path = &format!("{}/{}", OUTPUT_DIR, current_path);
 
@@ -145,9 +165,17 @@ fn render_file(
             let _ = fs::create_dir_all(&dirs_path);
             let render_file = fs::File::create(new_path);
 
+            let rendered = TERA_ENGINE.render("article.html", &context);
+
+            if let Err(err) = rendered {
+                return Err(FileRenderError::Render(err));
+            }
+            let rendered = rendered.unwrap();
+
             if let Err(err) = render_file {
                 return Err(FileRenderError::Create(err));
             }
+
             let mut render_file = render_file.unwrap();
             let write_result = render_file.write_all(&rendered.into_bytes());
 
@@ -227,10 +255,17 @@ fn index_files(content: &Content, file_index: &mut FileIndex) {
                         if let Ok(frontmatter) = parsed_matter
                             && frontmatter
                                 .data
+                                .as_ref()
                                 .is_some_and(|fm| fm.publish.is_some_and(|publish| publish))
                         {
                             let key = path.to_str().map(|s| s.to_string()).unwrap_or_default();
                             file_index.markdown_files.insert(key);
+                            let fm = frontmatter.data.unwrap();
+                            if let Some(imgs) = fm.image {
+                                for img in imgs {
+                                    file_index.markdown_image_files.insert(img);
+                                }
+                            }
                         }
                     }
                 }
@@ -388,6 +423,8 @@ fn main() {
     );
 
     let index_file_create = fs::File::create(format!("{}/index.html", OUTPUT_DIR));
+
+    println!("{:?}", index.markdown_image_files);
 
     if let Ok(mut index_file) = index_file_create {
         let mut index_context = Context::new();
