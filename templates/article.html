@@ -1,5 +1,6 @@
-{% extends "base.html" %} {% block content %}
-{% endblock content %} {% block nav_links %}
+{% extends "base.html" %}
+
+{% block nav_links %}
 {% for link in links | sort %}
 <li>
   <a href="{{ link | replace(from=" .md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
@@ -7,6 +8,7 @@
 </li>
 {% endfor %}
 {% endblock nav_links %}
+{% block content %}
 <article
   class="h-full max-w-2xl prose-hr:my-0 prose-h1:underline prose-li:my-1 prose mx-auto w-full py-8 prose-p:my-4 prose-headings:my-4 overflow-y-auto">
   <h1>{{title | safe }}</h1>
@@ -32,4 +34,6 @@
   </footer>
 
 </article>
+{% endblock content %}
+
 
