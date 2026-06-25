@@ -8,6 +8,7 @@ use std::{
 
 use anyhow::Result;
 use gray_matter::{Matter, engine::YAML};
+use regex::Regex;
 use tera::{Context, Tera};
 use thiserror::Error;
 
@@ -22,6 +23,10 @@ static TERA_ENGINE: LazyLock<Tera> = LazyLock::new(|| {
     };
     tera.autoescape_on(vec![".html"]);
     tera
+});
+static WIKILINK_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\[\[(?P<link>[^#|\]]+)(?:#(?P<heading>[^|\]]+))?(?:\|(?P<text>[^\]]+))?\]\]")
+        .unwrap()
 });
 
 const ROOT_DIR: &str = "content";
@@ -55,6 +60,35 @@ struct ContentProcessResult {
 }
 
 type Content = Vec<Result<DirEntry, std::io::Error>>;
+struct Wikilink {
+    alias: Option<String>,
+    heading: Option<String>,
+    link: String,
+}
+fn extract_wikilinks(text: &str) -> Vec<Wikilink> {
+    let mut results: Vec<Wikilink> = vec![];
+    for capture in WIKILINK_RE.captures_iter(text) {
+        let link = capture
+            .name("link")
+            .map(|s| s.as_str().to_string())
+            .unwrap_or_default();
+
+        if link.is_empty() {
+            continue;
+        }
+
+        let heading = capture.name("heading").map(|s| s.as_str().to_string());
+
+        let alias = capture.name("text").map(|s| s.as_str().to_string());
+
+        results.push(Wikilink {
+            alias,
+            heading,
+            link,
+        });
+    }
+    results
+}
 
 fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String, FileRenderError> {
     let mut file_content = String::new();
@@ -75,6 +109,8 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
             {
                 return Err(FileRenderError::NotPublished);
             }
+
+            let _ = extract_wikilinks(&frontmatter.content);
 
             let parser = pulldown_cmark::Parser::new(&frontmatter.content);
 
