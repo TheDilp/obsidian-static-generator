@@ -65,14 +65,18 @@ struct Frontmatter {
 #[derive(Default)]
 struct ContentProcessResult {
     success: u64,
-    skipped: u64,
     errored: u64,
 }
 
 type Content = Vec<Result<DirEntry, std::io::Error>>;
 type FileIndex = HashSet<String>;
 
-fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String, FileRenderError> {
+fn render_file(
+    file: &mut File,
+    title: &String,
+    path: &Display,
+    file_index: &FileIndex,
+) -> Result<String, FileRenderError> {
     let mut file_content = String::new();
 
     file.read_to_string(&mut file_content).unwrap_or_default();
@@ -102,6 +106,7 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
             let mut context = Context::new();
             context.insert("title", &title);
             context.insert("content", &html_output);
+            context.insert("links", file_index);
 
             let rendered = TERA_ENGINE.render("article.html", &context);
 
@@ -110,15 +115,15 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
             }
             let rendered = rendered.unwrap();
             let current_path = path.to_string().replace(".md", ".html");
-            let new_path = &format!("{}{}", OUTPUT_DIR, current_path).replace(ROOT_DIR, "");
+            let new_path = &format!("{}/{}", OUTPUT_DIR, current_path);
 
             let mut path_segments = new_path.split("/").collect::<Vec<&str>>();
 
-            let render_path = path_segments.pop().unwrap_or_default();
+            path_segments.pop().unwrap_or_default();
             let dirs_path = path_segments.join("/");
 
             let _ = fs::create_dir_all(&dirs_path);
-            let render_file = fs::File::create(format!("{}/{}", dirs_path, render_path));
+            let render_file = fs::File::create(new_path);
 
             if let Err(err) = render_file {
                 return Err(FileRenderError::Create(err));
@@ -153,7 +158,11 @@ fn is_valid_entry(entry: &DirEntry) -> bool {
         return false;
     };
     file_type.is_dir()
-        || (file_type.is_file() && entry.path().extension().is_some_and(|ext| ext == "md"))
+        || (file_type.is_file()
+            && entry
+                .path()
+                .extension()
+                .is_some_and(|ext| ext == "md" || ext == "canvas" || ext == "base"))
 }
 
 fn get_valid_entries_from_dir(dir: &str) -> Content {
@@ -208,41 +217,61 @@ fn index_files(content: &Content, file_index: &mut FileIndex) {
 
 fn process_content(
     content: Content,
-    index_page_links: &mut Vec<String>,
     process_result_count: &mut ContentProcessResult,
+    index: &FileIndex,
 ) {
-    for item in content {
+    let filtered = content.iter().filter(|item| {
+        if item.is_err() {
+            return false;
+        };
+        let item = item.as_ref().unwrap();
+        if item.metadata().is_err() {
+            return false;
+        }
+        let metadata = item.metadata().unwrap();
+        if metadata.is_dir() {
+            true
+        } else {
+            metadata.is_file()
+                && index.contains(
+                    &item
+                        .path()
+                        .to_str()
+                        .map(|s| s.to_string())
+                        .unwrap_or_default(),
+                )
+        }
+    });
+
+    for item in filtered {
         //* Checked previously when filtering invalid content */
-        let entry = item.unwrap();
+        let entry = item.as_ref().unwrap();
         let file_type = entry.file_type().unwrap();
-        //* Likewise title is validated to NOT be empty */
         let title = entry
             .file_name()
             .to_str()
+            //Todo: CLEAR OTHER FILE EXTENSIONS USING REGEX
             .map(|s| s.to_string().replace(".md", ""))
             .unwrap_or_default();
+
+        //* Skip if file title string is empty */
+        if title.is_empty() {
+            continue;
+        }
 
         let path = entry.path();
 
         if file_type.is_file()
             && let Ok(mut file) = fs::File::open(&path)
         {
-            let render_result = render_file(&mut file, &title, &entry.path().display());
+            let render_result = render_file(&mut file, &title, &entry.path().display(), index);
 
-            if let Ok(new_path) = render_result {
-                index_page_links.push(new_path);
+            if render_result.is_ok() {
                 tracing::info!("🟢 SUCCESSFULLY RENDERED FILE \"{}\"", title);
                 process_result_count.success += 1;
             } else if let Err(err) = render_result {
                 match err {
-                    FileRenderError::ContentEmpty => {
-                        tracing::info!("⏭️ FILE CONTENT EMPTY FOR FILE \"{}\" | SKIPPING", title);
-                        process_result_count.skipped += 1;
-                    }
-                    FileRenderError::NotPublished => {
-                        tracing::info!("⏭️ FILE NOT PUBLISHED FOR FILE \"{}\" | SKIPPING", title);
-                        process_result_count.skipped += 1;
-                    }
+                    FileRenderError::ContentEmpty | FileRenderError::NotPublished => {}
                     FileRenderError::Create(err) => {
                         tracing::error!(
                             "🔴 ERROR WITH CREATING FILE \"{}\" | ERROR: {}",
@@ -281,14 +310,14 @@ fn process_content(
             && let Some(dir_path) = path.to_str()
         {
             let content = get_valid_entries_from_dir(dir_path);
-            process_content(content, index_page_links, process_result_count);
+            process_content(content, process_result_count, index);
         }
     }
 }
 
 fn main() {
     //* Start tracing subscriber */
-    // tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt::init();
 
     //* Create required directories */
     let _ = fs::create_dir(ROOT_DIR);
@@ -301,33 +330,25 @@ fn main() {
     let mut index = HashSet::new();
     index_files(&content, &mut index);
 
-    println!("{:?}", index);
-
     let mut process_result_count = ContentProcessResult::default();
-
-    let mut index_page_links: Vec<String> = vec![];
 
     let start = std::time::Instant::now();
     //* Process content starting with root directory */
-    process_content(content, &mut index_page_links, &mut process_result_count);
-
+    process_content(content, &mut process_result_count, &index);
     println!("\n");
     println!("\n");
     tracing::info!(
         "🟢 NUMBER OF RENDERED FILES: {}",
         process_result_count.success
     );
-    tracing::info!(
-        "⏭️ NUMBER OF SKIPPED FILES: {}",
-        process_result_count.skipped
-    );
+
     tracing::info!(
         "🔴 NUMBER OF ERRORED FILES: {}",
         process_result_count.errored
     );
     tracing::info!(
         "📊 TOTAL FILES PROCESSED: {} IN {} milliseconds.",
-        process_result_count.success + process_result_count.skipped + process_result_count.errored,
+        process_result_count.success + process_result_count.errored,
         start.elapsed().as_millis()
     );
 
@@ -335,7 +356,7 @@ fn main() {
 
     if let Ok(mut index_file) = index_file_create {
         let mut index_context = Context::new();
-        index_context.insert("links", &index_page_links);
+        index_context.insert("links", &index);
 
         let content = TERA_ENGINE.render("index.html", &index_context).unwrap();
 
