@@ -102,8 +102,7 @@ command = [
 need_stdout = true
 allow_warnings = true
 background = false
-watch = ["src"]
-ignore = ["src/templates", "src/test", "src/seed", "src/fonts" ]
+watch = ["src", "static", "templates"]
 on_change_strategy = "kill_then_restart"
 # kill = ["pkill", "-TERM", "-P"]
 
