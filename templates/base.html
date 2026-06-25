@@ -12,9 +12,14 @@
   </head>
 
   <body class="bg-zinc-800 prose-p:text-white h-dvh flex flex-nowrap w-dvw">
-    <section class="bg-zinc-900 lg:w-72">
-      {% block nav_links %} {% endblock nav_links %}
+    <section class="bg-zinc-900 lg:w-72 p-4">
+      <h2 class="text-lg font-bold border-b border-white mb-4">
+        <a href="/dist/index.html" class="w-full">Home - Wiki</a>
+      </h2>
+      <ul class="text-sm flex flex-col gap-y-1">
+        {% block nav_links %} {% endblock nav_links %}
+      </ul>
     </section>
-    <main>{% block content %}{% endblock content %}</main>
+    <main class="flex-1 flex">{% block content %}{% endblock content %}</main>
   </body>
 </html>

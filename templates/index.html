@@ -1,19 +1,22 @@
-{% extends "base.html" %} {% block content %}
-<ul>
+{% extends "base.html" %}
+{% block nav_links %}
   {% for link in links %}
   <li>
     <a href="{{ link | replace(from=".md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
       split(pat="/") | last }} </a>
   </li>
   {% endfor %}
-</ul>
-{% endblock content %} {% block nav_links %}
-<ul>
-  {% for link in links %}
-  <li>
-    <a href="{{ link | replace(from=".md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
-      split(pat="/") | last }} </a>
-  </li>
-  {% endfor %}
-</ul>
 {% endblock nav_links %}
+{% block content %}
+<div class="flex flex-col gap-y-4 p-8">
+<h2 class="text-3xl font-bold">Index</h2>
+<ul>
+  {% for link in links %}
+  <li>
+    <a href="{{ link | replace(from=".md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
+      split(pat="/") | last }} </a>
+  </li>
+  {% endfor %}
+</ul>
+</div>
+{% endblock content %}

@@ -1,13 +1,11 @@
 {% extends "base.html" %} {% block content %}
-<article class="h-full p-4 prose">{{ content | spaceless | safe }}</article>
+<article class="h-full p-4 prose overflow-y-auto flex-1 overflow-x-visible">{{ content | spaceless | safe }}</article>
 
 {% endblock content %} {% block nav_links %}
-<ul>
- {% for link in links %}
+ {% for link in links | sort %}
   <li>
     <a href="{{ link | replace(from=".md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
       split(pat="/") | last }} </a>
   </li>
   {% endfor %}
-</ul>
 {% endblock nav_links %}
