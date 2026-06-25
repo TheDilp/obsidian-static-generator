@@ -45,6 +45,10 @@ static MARKDOWN_PARSER_OPTIONS: LazyLock<Options> = LazyLock::new(|| {
 const ROOT_DIR: &str = "content";
 const OUTPUT_DIR: &str = "dist";
 
+const VALID_EXTENSIONS: [&str; 9] = [
+    "md", "canvas", "base", "jpeg", "jpg", "png", "webp", "avif", "gif",
+];
+
 #[derive(Debug, Error)]
 enum FileRenderError {
     #[error("Failed to render file | ERROR: {0}")]
@@ -73,7 +77,12 @@ struct ContentProcessResult {
 }
 
 type Content = Vec<Result<DirEntry, std::io::Error>>;
-type FileIndex = HashSet<String>;
+
+#[derive(Default)]
+struct FileIndex {
+    markdown_files: HashSet<String>,
+    image_files: HashSet<String>,
+}
 
 fn render_file(
     file: &mut File,
@@ -116,7 +125,7 @@ fn render_file(
             let mut context = Context::new();
             context.insert("title", &title);
             context.insert("content", &html_output);
-            context.insert("links", file_index);
+            context.insert("links", &file_index.markdown_files);
             context.insert("tags", &tags);
 
             let rendered = TERA_ENGINE.render("article.html", &context);
@@ -173,7 +182,7 @@ fn is_valid_entry(entry: &DirEntry) -> bool {
             && entry
                 .path()
                 .extension()
-                .is_some_and(|ext| ext == "md" || ext == "canvas" || ext == "base"))
+                .is_some_and(|ext| VALID_EXTENSIONS.contains(&ext.to_str().unwrap_or_default())))
 }
 
 fn get_valid_entries_from_dir(dir: &str) -> Content {
@@ -193,29 +202,43 @@ fn index_files(content: &Content, file_index: &mut FileIndex) {
         let file_type = entry.file_type().unwrap();
 
         let path = entry.path();
+        let extension = path
+            .extension()
+            .map(|s| s.to_str().unwrap_or_default())
+            .unwrap_or_default();
 
-        if file_type.is_file()
+        if extension.is_empty().not()
+            && file_type.is_file()
             && let Ok(mut file) = fs::File::open(&path)
         {
-            let mut file_content = String::new();
+            match extension {
+                "md" => {
+                    let mut file_content = String::new();
 
-            file.read_to_string(&mut file_content).unwrap_or_default();
+                    file.read_to_string(&mut file_content).unwrap_or_default();
 
-            //* Parse only non-empty files  */
-            if file_content.is_empty().not() {
-                //* Extract the frontmatter  */
-                let matter = Matter::<YAML>::new();
+                    //* Parse only non-empty files  */
+                    if file_content.is_empty().not() {
+                        //* Extract the frontmatter  */
+                        let matter = Matter::<YAML>::new();
 
-                let parsed_matter = matter.parse::<Frontmatter>(&file_content);
+                        let parsed_matter = matter.parse::<Frontmatter>(&file_content);
 
-                if let Ok(frontmatter) = parsed_matter
-                    && frontmatter
-                        .data
-                        .is_some_and(|fm| fm.publish.is_some_and(|publish| publish))
-                {
-                    let key = path.to_str().map(|s| s.to_string()).unwrap_or_default();
-                    file_index.insert(key);
+                        if let Ok(frontmatter) = parsed_matter
+                            && frontmatter
+                                .data
+                                .is_some_and(|fm| fm.publish.is_some_and(|publish| publish))
+                        {
+                            let key = path.to_str().map(|s| s.to_string()).unwrap_or_default();
+                            file_index.markdown_files.insert(key);
+                        }
+                    }
                 }
+                "png" | "jpg" | "jpeg" | "webp" | "gif" => {
+                    let key = path.to_str().map(|s| s.to_string()).unwrap_or_default();
+                    file_index.image_files.insert(key);
+                }
+                _ => {}
             }
         } else if file_type.is_dir()
             && let Some(dir_path) = path.to_str()
@@ -244,7 +267,7 @@ fn process_content(
             true
         } else {
             metadata.is_file()
-                && index.contains(
+                && index.markdown_files.contains(
                     &item
                         .path()
                         .to_str()
@@ -338,7 +361,8 @@ fn main() {
     let content = get_valid_entries_from_dir(ROOT_DIR);
 
     //* Index files */
-    let mut index = HashSet::new();
+    let mut index = FileIndex::default();
+
     index_files(&content, &mut index);
 
     let mut process_result_count = ContentProcessResult::default();
@@ -370,7 +394,7 @@ fn main() {
 
         let mut grouped_index: HashMap<char, Vec<String>> = HashMap::new();
 
-        for item in index {
+        for item in index.markdown_files {
             if let Some(file_name) = item.split("/").last()
                 && let Some(letter) = file_name.chars().next()
             {
