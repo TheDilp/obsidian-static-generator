@@ -1,3 +1,12 @@
 {% extends "base.html" %} {% block content %}
 <article class="h-full p-4">{{ content | safe }}</article>
-{% endblock content %}
+{% endblock content %} {% block nav_links %}
+
+<ul>
+  {% for link in links %}
+  <li>
+    <a href="{{ link }}" class="text-white"> {{link }} </a>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock nav_links %}
