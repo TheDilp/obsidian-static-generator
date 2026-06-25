@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs::{self, DirEntry, File},
     io::{Read, Write},
     ops::Not,
@@ -317,7 +317,7 @@ fn process_content(
 
 fn main() {
     //* Start tracing subscriber */
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
     //* Create required directories */
     let _ = fs::create_dir(ROOT_DIR);
@@ -356,7 +356,17 @@ fn main() {
 
     if let Ok(mut index_file) = index_file_create {
         let mut index_context = Context::new();
-        index_context.insert("links", &index);
+
+        let mut grouped_index: HashMap<char, Vec<String>> = HashMap::new();
+
+        for item in index {
+            if let Some(file_name) = item.split("/").last()
+                && let Some(letter) = file_name.chars().next()
+            {
+                grouped_index.entry(letter).or_default().push(item);
+            };
+        }
+        index_context.insert("links", &grouped_index);
 
         let content = TERA_ENGINE.render("index.html", &index_context).unwrap();
 
