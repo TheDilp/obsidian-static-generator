@@ -1,9 +1,9 @@
-{% extends "base.html" %}
-
+{% extends "base.html" %} {% block content %}
 <ul>
-  {% block content %} {% for link in links %}
+  {% for link in links %}
   <li>
     <a href="{{ link }}" class="text-white"> {{link }} </a>
   </li>
-  {% endfor %} {% endblock content %}
+  {% endfor %}
 </ul>
+{% endblock content %}
