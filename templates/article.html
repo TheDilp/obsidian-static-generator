@@ -3,9 +3,10 @@
 {% endblock content %} {% block nav_links %}
 
 <ul>
-  {% for link in links %}
+ {% for link in links %}
   <li>
-    <a href="{{ link }}" class="text-white"> {{link }} </a>
+    <a href="{{ link | replace(from=".md", to=".html" ) }}" class="text-white"> {{ link | replace(from=".md", to="") |
+      split(pat="/") | last }} </a>
   </li>
   {% endfor %}
 </ul>
