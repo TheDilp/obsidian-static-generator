@@ -13,6 +13,7 @@ use pulldown_cmark::Options;
 use serde::Serialize;
 use tera::{Context, Tera};
 use thiserror::Error;
+use unidecode::unidecode;
 
 static TERA_ENGINE: LazyLock<Tera> = LazyLock::new(|| {
     //* Load templates */
@@ -136,11 +137,12 @@ fn render_file(
                 && fm.image.is_some()
                 && let Some(image) = fm.image.as_ref().unwrap().first()
             {
-                let image_title = image.replace("[[", "").replace("]]", "");
+                let image_title = &image.replace("[[", "").replace("]]", "");
+
                 let image_path = file_index
                     .image_files
                     .iter()
-                    .find(|path| path.ends_with(image_title.as_str()));
+                    .find(|path| unidecode(path).ends_with(&unidecode(image_title.as_str())));
                 if let Some(path) = image_path {
                     let new_path = format!("{}/{}", OUTPUT_DIR, path);
                     let mut dirs_path = new_path.split("/").collect::<Vec<&str>>();
@@ -150,6 +152,8 @@ fn render_file(
                         let res = fs::copy(path, &new_path);
                         if res.is_ok() {
                             context.insert("image", &path);
+                        } else {
+                            eprintln!("{}", res.err().unwrap());
                         }
                     });
                 }
