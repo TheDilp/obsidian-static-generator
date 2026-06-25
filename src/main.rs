@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs::{self, DirEntry, File},
     io::{Read, Write},
     ops::Not,
@@ -9,7 +10,6 @@ use std::{
 use anyhow::Result;
 use gray_matter::{Matter, engine::YAML};
 use pulldown_cmark::Options;
-use regex::Regex;
 use tera::{Context, Tera};
 use thiserror::Error;
 
@@ -24,10 +24,6 @@ static TERA_ENGINE: LazyLock<Tera> = LazyLock::new(|| {
     };
     tera.autoescape_on(vec![".html"]);
     tera
-});
-static WIKILINK_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\[\[(?P<link>[^#|\]]+)(?:#(?P<heading>[^|\]]+))?(?:\|(?P<text>[^\]]+))?\]\]")
-        .unwrap()
 });
 
 static MARKDOWN_PARSER_OPTIONS: LazyLock<Options> = LazyLock::new(|| {
@@ -74,35 +70,7 @@ struct ContentProcessResult {
 }
 
 type Content = Vec<Result<DirEntry, std::io::Error>>;
-struct Wikilink {
-    alias: Option<String>,
-    heading: Option<String>,
-    link: String,
-}
-fn extract_wikilinks(text: &str) -> Vec<Wikilink> {
-    let mut results: Vec<Wikilink> = vec![];
-    for capture in WIKILINK_RE.captures_iter(text) {
-        let link = capture
-            .name("link")
-            .map(|s| s.as_str().to_string())
-            .unwrap_or_default();
-
-        if link.is_empty() {
-            continue;
-        }
-
-        let heading = capture.name("heading").map(|s| s.as_str().to_string());
-
-        let alias = capture.name("text").map(|s| s.as_str().to_string());
-
-        results.push(Wikilink {
-            alias,
-            heading,
-            link,
-        });
-    }
-    results
-}
+type FileIndex = HashSet<String>;
 
 fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String, FileRenderError> {
     let mut file_content = String::new();
@@ -123,8 +91,6 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
             {
                 return Err(FileRenderError::NotPublished);
             }
-
-            let _ = extract_wikilinks(&frontmatter.content);
 
             let parser =
                 pulldown_cmark::Parser::new_ext(&frontmatter.content, *MARKDOWN_PARSER_OPTIONS);
@@ -197,6 +163,46 @@ fn get_valid_entries_from_dir(dir: &str) -> Content {
             .collect::<Vec<Result<DirEntry, std::io::Error>>>()
     } else {
         vec![]
+    }
+}
+
+fn index_files(content: &Content, file_index: &mut FileIndex) {
+    for item in content.iter().filter(|entry| entry.is_ok()) {
+        //* Checked previously when filtering invalid content */
+        let entry = item.as_ref().unwrap();
+        let file_type = entry.file_type().unwrap();
+
+        let path = entry.path();
+
+        if file_type.is_file()
+            && let Ok(mut file) = fs::File::open(&path)
+        {
+            let mut file_content = String::new();
+
+            file.read_to_string(&mut file_content).unwrap_or_default();
+
+            //* Parse only non-empty files  */
+            if file_content.is_empty().not() {
+                //* Extract the frontmatter  */
+                let matter = Matter::<YAML>::new();
+
+                let parsed_matter = matter.parse::<Frontmatter>(&file_content);
+
+                if let Ok(frontmatter) = parsed_matter
+                    && frontmatter
+                        .data
+                        .is_some_and(|fm| fm.publish.is_some_and(|publish| publish))
+                {
+                    let key = path.to_str().map(|s| s.to_string()).unwrap_or_default();
+                    file_index.insert(key);
+                }
+            }
+        } else if file_type.is_dir()
+            && let Some(dir_path) = path.to_str()
+        {
+            let content = get_valid_entries_from_dir(dir_path);
+            index_files(&content, file_index);
+        }
     }
 }
 
@@ -282,13 +288,20 @@ fn process_content(
 
 fn main() {
     //* Start tracing subscriber */
-    tracing_subscriber::fmt::init();
+    // tracing_subscriber::fmt::init();
 
+    //* Create required directories */
     let _ = fs::create_dir(ROOT_DIR);
     let _ = fs::create_dir(OUTPUT_DIR);
 
     //* Get valid content in root directory */
     let content = get_valid_entries_from_dir(ROOT_DIR);
+
+    //* Index files */
+    let mut index = HashSet::new();
+    index_files(&content, &mut index);
+
+    println!("{:?}", index);
 
     let mut process_result_count = ContentProcessResult::default();
 
