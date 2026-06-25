@@ -8,6 +8,7 @@ use std::{
 
 use anyhow::Result;
 use gray_matter::{Matter, engine::YAML};
+use pulldown_cmark::Options;
 use regex::Regex;
 use tera::{Context, Tera};
 use thiserror::Error;
@@ -27,6 +28,19 @@ static TERA_ENGINE: LazyLock<Tera> = LazyLock::new(|| {
 static WIKILINK_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\[\[(?P<link>[^#|\]]+)(?:#(?P<heading>[^|\]]+))?(?:\|(?P<text>[^\]]+))?\]\]")
         .unwrap()
+});
+
+static MARKDOWN_PARSER_OPTIONS: LazyLock<Options> = LazyLock::new(|| {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_GFM);
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_FOOTNOTES);
+    options.insert(Options::ENABLE_TASKLISTS);
+    options.insert(Options::ENABLE_WIKILINKS);
+    options.insert(Options::ENABLE_MATH);
+
+    options
 });
 
 const ROOT_DIR: &str = "content";
@@ -112,7 +126,8 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
 
             let _ = extract_wikilinks(&frontmatter.content);
 
-            let parser = pulldown_cmark::Parser::new(&frontmatter.content);
+            let parser =
+                pulldown_cmark::Parser::new_ext(&frontmatter.content, *MARKDOWN_PARSER_OPTIONS);
 
             let mut html_output = String::new();
 
@@ -129,7 +144,7 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
             }
             let rendered = rendered.unwrap();
             let current_path = path.to_string().replace(".md", ".html");
-            let new_path = &format!("{}/{}", OUTPUT_DIR, current_path).replace(ROOT_DIR, "");
+            let new_path = &format!("{}{}", OUTPUT_DIR, current_path).replace(ROOT_DIR, "");
 
             let mut path_segments = new_path.split("/").collect::<Vec<&str>>();
 
@@ -148,7 +163,9 @@ fn render_file(file: &mut File, title: &String, path: &Display) -> Result<String
             if let Err(err) = write_result {
                 Err(FileRenderError::Write(err))
             } else {
-                Ok(new_path.to_owned())
+                let mut link_path = current_path.replace(ROOT_DIR, "");
+                link_path.remove(0);
+                Ok(link_path)
             }
         } else if let Err(err) = parsed_matter {
             Err(FileRenderError::FrontmatterParsing(err))
