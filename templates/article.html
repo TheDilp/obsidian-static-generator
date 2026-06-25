@@ -1,7 +1,7 @@
 {% extends "base.html" %} {% block content %}
-<article class="h-full p-4">{{ content | safe }}</article>
-{% endblock content %} {% block nav_links %}
+<article class="h-full p-4 prose">{{ content | spaceless | safe }}</article>
 
+{% endblock content %} {% block nav_links %}
 <ul>
  {% for link in links %}
   <li>
