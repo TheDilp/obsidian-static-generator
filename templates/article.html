@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block content %}
-<article class="h-full p-4 prose overflow-y-auto flex-1 overflow-x-visible">{{ content | spaceless | safe }}</article>
+<article class="h-full prose max-w-full mx-auto w-full p-14 prose-p:my-4 prose-headings:my-4 overflow-y-auto">{{ content | spaceless | safe }}</article>
 
 {% endblock content %} {% block nav_links %}
  {% for link in links | sort %}

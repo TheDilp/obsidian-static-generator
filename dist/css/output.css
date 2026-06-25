@@ -10,6 +10,7 @@
     --color-red-500: oklch(63.7% 0.237 25.331);
     --color-sky-400: oklch(74.6% 0.16 232.661);
     --color-sky-600: oklch(58.8% 0.158 241.966);
+    --color-blue-300: oklch(80.9% 0.105 251.813);
     --color-blue-400: oklch(70.7% 0.165 254.624);
     --color-slate-800: oklch(27.9% 0.041 260.031);
     --color-slate-900: oklch(20.8% 0.042 265.755);
@@ -20,6 +21,7 @@
     --color-zinc-950: oklch(14.1% 0.005 285.823);
     --color-white: #fff;
     --spacing: 0.25rem;
+    --container-2xl: 42rem;
     --text-sm: 0.875rem;
     --text-sm--line-height: calc(1.25 / 0.875);
     --text-base: 1rem;
@@ -190,6 +192,9 @@
 @layer utilities {
   .static {
     position: static;
+  }
+  .mx-auto {
+    margin-inline: auto;
   }
   .my-1 {
     margin-block: var(--spacing);
@@ -639,6 +644,18 @@
   .w-full {
     width: 100%;
   }
+  .max-w-2xl {
+    max-width: var(--container-2xl);
+  }
+  .max-w-\[80ch\] {
+    max-width: 80ch;
+  }
+  .max-w-\[100ch\] {
+    max-width: 100ch;
+  }
+  .max-w-full {
+    max-width: 100%;
+  }
   .flex-1 {
     flex: 1;
   }
@@ -704,6 +721,9 @@
   .border-zinc-800 {
     border-color: var(--color-zinc-800);
   }
+  .bg-blue-300 {
+    background-color: var(--color-blue-300);
+  }
   .bg-blue-400 {
     background-color: var(--color-blue-400);
   }
@@ -733,6 +753,12 @@
   }
   .p-8 {
     padding: calc(var(--spacing) * 8);
+  }
+  .p-10 {
+    padding: calc(var(--spacing) * 10);
+  }
+  .p-14 {
+    padding: calc(var(--spacing) * 14);
   }
   .pb-2 {
     padding-bottom: calc(var(--spacing) * 2);
@@ -808,6 +834,31 @@
   .lg\:w-72 {
     @media (width >= 64rem) {
       width: calc(var(--spacing) * 72);
+    }
+  }
+  .prose-headings\:my-2 {
+    & :is(:where(h1, h2, h3, h4, h5, h6, th):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      margin-block: calc(var(--spacing) * 2);
+    }
+  }
+  .prose-headings\:my-4 {
+    & :is(:where(h1, h2, h3, h4, h5, h6, th):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      margin-block: calc(var(--spacing) * 4);
+    }
+  }
+  .prose-p\:my-1 {
+    & :is(:where(p):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      margin-block: var(--spacing);
+    }
+  }
+  .prose-p\:my-2 {
+    & :is(:where(p):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      margin-block: calc(var(--spacing) * 2);
+    }
+  }
+  .prose-p\:my-4 {
+    & :is(:where(p):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      margin-block: calc(var(--spacing) * 4);
     }
   }
   .prose-p\:text-white {
