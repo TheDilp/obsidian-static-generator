@@ -26,7 +26,11 @@ fn main() {
     //* Create required directories */
     let _ = fs::create_dir_all(&root_dir);
     let output_path = OUTPUT_DIR.to_string();
-    let _ = fs::create_dir_all(output_path);
+    let _ = fs::create_dir_all(&output_path);
+    let _ = fs::copy(
+        "static/output.css",
+        format!("{}/css/output.css", output_path),
+    );
 
     //* Cache */
     let mut cache = HashMap::new();
@@ -51,7 +55,7 @@ fn main() {
 
     if let Ok(mut index_file) = index_file_create {
         let mut index_context = Context::new();
-
+        index_context.insert("output_dir", &*OUTPUT_DIR);
         let mut grouped_index: HashMap<char, Vec<MarkdownFile>> = HashMap::new();
 
         for item in index.markdown_files {
