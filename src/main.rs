@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs::{self},
-    io::{BufReader, Write},
+    io::Write,
 };
 
 use tera::Context;
@@ -27,27 +27,14 @@ fn main() {
     let _ = fs::create_dir_all(&root_dir);
     let output_path = OUTPUT_DIR.to_string();
     let _ = fs::create_dir_all(&output_path);
-    let _ = fs::copy(
-        "static/output.css",
-        format!("{}/css/output.css", output_path),
-    );
-
-    //* Cache */
-    let mut cache = HashMap::new();
-    if let Ok(cache_json) = fs::File::open(format!("{}/cache.json", *OUTPUT_DIR)) {
-        let reader = BufReader::new(cache_json);
-        let cached = serde_json::from_reader::<_, HashMap<u64, u64>>(reader);
-        if let Ok(cached_data) = cached {
-            cache = cached_data;
-        }
-    }
+    let _ = fs::copy("static/output.css", format!("{}/output.css", output_path));
 
     let start = std::time::Instant::now();
     tracing::info!("🚀 STARTED PROCESSING");
 
     //* Index files */
     let mut index = FileIndex::default();
-    index.create_index(&root_dir, &root_dir, &mut cache);
+    index.create_index(&root_dir, &root_dir);
     index.remove_unpublished_images();
     index.copy_images();
 
@@ -58,7 +45,6 @@ fn main() {
         index_context.insert("output_dir", &*OUTPUT_DIR);
         let mut grouped_index: HashMap<char, Vec<MarkdownFile>> = HashMap::new();
 
-        println!("{:?}", index.markdown_files);
         for item in index.markdown_files {
             if let Some(letter) = item.title.chars().next() {
                 grouped_index.entry(letter).or_default().push(item);
@@ -74,12 +60,4 @@ fn main() {
     }
 
     tracing::info!("🏁 FINISHED PROCESSING IN {:?}", start.elapsed());
-    if let Ok(cache_json) = serde_json::to_value(cache) {
-        let cache_file = fs::File::create(format!("{}/cache.json", *OUTPUT_DIR));
-
-        if let Ok(mut file) = cache_file {
-            file.write_all(&cache_json.to_string().into_bytes())
-                .unwrap();
-        }
-    }
 }
