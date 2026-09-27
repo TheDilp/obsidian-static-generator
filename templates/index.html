@@ -3,7 +3,7 @@
 {% for key, link_list in links %}
 {% for link in link_list | sort(attribute="title")  %}
 <li>
-  <a href="{{ link.link  }}" class="text-white"> {{ link.title }} </a>
+  <a href="{{ link.output_path  }}" class="text-white"> {{ link.title }} </a>
 </li>
 {%endfor%}
 {% endfor %}
@@ -18,7 +18,7 @@
       <ul class="border rounded-md w-full overflow-hidden border-zinc-800">
         {% for link in link_list | sort(attribute="title") %}
         <li class="odd:bg-zinc-800 p-1.5">
-          <a href="{{ link.link }}" class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"> {{ link.title }} </a>
+          <a href="{{ link.output_path }}" class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"> {{ link.title }} </a>
         </li>
         {% endfor %}
       </ul>
