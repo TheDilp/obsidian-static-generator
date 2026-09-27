@@ -6,3 +6,7 @@ node_modules
 CLAUDE.md
 dist/**/*.html
 .vscode
+.env
+.env.*
+.envrc
+output
