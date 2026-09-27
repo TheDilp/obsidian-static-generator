@@ -4,7 +4,7 @@ use tera::Context;
 use unidecode::unidecode;
 
 use crate::{
-    consts::{MARKDOWN_PARSER_OPTIONS, TERA_ENGINE},
+    consts::{MARKDOWN_PARSER_OPTIONS, OUTPUT_DIR, TERA_ENGINE},
     error::FileRenderError,
     models::{file_index::FileIndex, markdown_file::MarkdownFile},
 };
@@ -25,7 +25,7 @@ pub fn render_file(
     context.insert("title", &markdown_file.title);
     context.insert("content", &html_output);
     context.insert("links", &file_index.markdown_files);
-
+    context.insert("output_dir", &*OUTPUT_DIR);
     if let Some(image) = frontmatter.image.as_ref().and_then(|images| images.first()) {
         let image_title = image.replace("[[", "").replace("]]", "");
 

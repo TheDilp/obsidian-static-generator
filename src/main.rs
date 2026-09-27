@@ -58,6 +58,7 @@ fn main() {
         index_context.insert("output_dir", &*OUTPUT_DIR);
         let mut grouped_index: HashMap<char, Vec<MarkdownFile>> = HashMap::new();
 
+        println!("{:?}", index.markdown_files);
         for item in index.markdown_files {
             if let Some(letter) = item.title.chars().next() {
                 grouped_index.entry(letter).or_default().push(item);
