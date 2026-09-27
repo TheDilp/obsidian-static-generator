@@ -1,9 +1,10 @@
 use std::{
     collections::HashMap,
     fs::{self},
-    io::Write,
+    io::{BufReader, Write},
 };
 
+use serde_json::Value;
 use tera::Context;
 
 use crate::{
@@ -31,9 +32,20 @@ fn main() {
     let output_path = OUTPUT_DIR.to_string();
     let _ = fs::create_dir(output_path);
 
+    //* Cache */
+    let mut cache = HashMap::new();
+    if let Ok(cache_json) = fs::File::open(format!("{}/cache.json", *OUTPUT_DIR)) {
+        let reader = BufReader::new(cache_json);
+
+        let cached = serde_json::from_reader::<_, HashMap<u64, u64>>(reader);
+
+        if let Ok(cached_data) = cached {
+            cache = cached_data;
+        }
+    }
     //* Index files */
     let mut index = FileIndex::default();
-    index.create_index(&root_dir, &root_dir);
+    index.create_index(&root_dir, &root_dir, &mut cache);
     index.remove_unpublished_images();
     index.copy_images();
 
@@ -56,6 +68,15 @@ fn main() {
         index_file.write_all(&content.into_bytes()).unwrap();
     } else if let Err(err) = index_file_create {
         tracing::error!("{}", err);
+    }
+
+    if let Ok(cache_json) = serde_json::to_value(cache) {
+        let cache_file = fs::File::create(format!("{}/cache.json", *OUTPUT_DIR));
+
+        if let Ok(mut file) = cache_file {
+            file.write_all(&cache_json.to_string().into_bytes())
+                .unwrap();
+        }
     }
 
     tracing::info!("🏁 FINISHED PROCESSING IN {:?}", start.elapsed());

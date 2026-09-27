@@ -13,10 +13,6 @@ pub fn render_file(
     markdown_file: &MarkdownFile,
     file_index: &FileIndex,
 ) -> Result<String, FileRenderError> {
-    if markdown_file.content.is_empty() {
-        return Err(FileRenderError::ContentEmpty);
-    }
-
     let parser = pulldown_cmark::Parser::new_ext(&markdown_file.content, *MARKDOWN_PARSER_OPTIONS);
 
     let mut html_output = String::new();
@@ -64,14 +60,11 @@ pub fn render_file(
     path_segments.pop().unwrap_or_default();
     let dirs_path = path_segments.join("/");
 
-    if let Err(err) = fs::create_dir_all(&dirs_path) {
-        eprintln!("{}", err);
-    }
+    let _ = fs::create_dir_all(&dirs_path);
 
     let render_file = fs::File::create(new_path);
 
     if let Err(err) = render_file {
-        eprintln!("{}", dirs_path);
         return Err(FileRenderError::Create(err));
     }
     let rendered = TERA_ENGINE.render("article.html", &context);

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     models::{
@@ -16,6 +16,7 @@ use std::{
 };
 
 use gray_matter::{Matter, engine::YAML};
+use xxhash_rust::xxh3::xxh3_64;
 
 use crate::consts::OUTPUT_DIR;
 
@@ -27,7 +28,7 @@ pub struct FileIndex {
 }
 
 impl FileIndex {
-    pub fn create_index(&mut self, dir: &str, root_dir: &str) {
+    pub fn create_index(&mut self, dir: &str, root_dir: &str, cache: &mut HashMap<u64, u64>) {
         let content = get_valid_entries_from_dir(dir);
 
         for item in content
@@ -47,6 +48,9 @@ impl FileIndex {
             if title.is_empty() {
                 continue;
             }
+
+            //* Create cache key for each file */
+            let cache_key = xxh3_64(title.as_bytes());
 
             let path = entry.path();
             let extension = path
@@ -79,6 +83,15 @@ impl FileIndex {
                                 .as_ref()
                                 .is_some_and(|fm| fm.publish.is_some_and(|publish| publish))
                         {
+                            //* Hash file value for faster lookup */
+                            let value = xxh3_64(frontmatter.content.as_bytes());
+
+                            if let Some(cached_value) = cache.get(&cache_key)
+                                && cached_value == &value
+                            {
+                                continue;
+                            }
+
                             let path_str = path.to_str();
 
                             if path_str.is_none() {
@@ -117,8 +130,10 @@ impl FileIndex {
 
                             if let Err(err) = render_file(&new_file, self) {
                                 println!("{err}");
+                                continue;
                             }
 
+                            cache.insert(cache_key, value);
                             self.markdown_files.push(new_file);
                         }
                     }
@@ -147,7 +162,7 @@ impl FileIndex {
             } else if file_type.is_dir()
                 && let Some(dir_path) = path.to_str()
             {
-                self.create_index(dir_path, root_dir);
+                self.create_index(dir_path, root_dir, cache);
             }
         }
     }
