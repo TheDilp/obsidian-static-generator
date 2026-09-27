@@ -68,6 +68,7 @@ fn main() {
         tracing::error!("{}", err);
     }
 
+    tracing::info!("🏁 FINISHED PROCESSING IN {:?}", start.elapsed());
     if let Ok(cache_json) = serde_json::to_value(cache) {
         let cache_file = fs::File::create(format!("{}/cache.json", *OUTPUT_DIR));
 
@@ -76,6 +77,4 @@ fn main() {
                 .unwrap();
         }
     }
-
-    tracing::info!("🏁 FINISHED PROCESSING IN {:?}", start.elapsed());
 }
