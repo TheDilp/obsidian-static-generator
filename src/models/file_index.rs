@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
+    error::FileRenderError,
     models::{
         image_files::ImageFileLink,
         markdown_file::{Frontmatter, MarkdownFile},
@@ -64,11 +65,21 @@ impl FileIndex {
             {
                 match extension {
                     "md" => {
+                        let metadata = file.metadata();
                         let mut file_content = String::new();
-
-                        file.read_to_string(&mut file_content).unwrap_or_default();
-
-                        if file_content.is_empty() {
+                        //* Skip files if they are empty */
+                        if let Ok(metadata) = metadata {
+                            let is_empty = metadata.len() == 0;
+                            if is_empty {
+                                eprintln!("{}", FileRenderError::ContentEmpty);
+                                continue;
+                            } else {
+                                let res = file.read_to_string(&mut file_content);
+                                if res.is_err() {
+                                    continue;
+                                }
+                            }
+                        } else {
                             continue;
                         }
 
@@ -84,6 +95,7 @@ impl FileIndex {
                                 .is_some_and(|fm| fm.publish.is_some_and(|publish| publish))
                         {
                             //* Hash file value for faster lookup */
+                            //* if value is identical - skip */
                             let value = xxh3_64(frontmatter.content.as_bytes());
 
                             if let Some(cached_value) = cache.get(&cache_key)
