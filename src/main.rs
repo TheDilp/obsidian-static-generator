@@ -4,7 +4,6 @@ use std::{
     io::{BufReader, Write},
 };
 
-use serde_json::Value;
 use tera::Context;
 
 use crate::{
@@ -28,9 +27,9 @@ fn main() {
     tracing::info!("🚀 STARTED PROCESSING");
 
     //* Create required directories */
-    let _ = fs::create_dir(&root_dir);
+    let _ = fs::create_dir_all(&root_dir);
     let output_path = OUTPUT_DIR.to_string();
-    let _ = fs::create_dir(output_path);
+    let _ = fs::create_dir_all(output_path);
 
     //* Cache */
     let mut cache = HashMap::new();
