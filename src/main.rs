@@ -23,9 +23,6 @@ fn main() {
     tracing_subscriber::fmt::init();
     let root_dir = std::env::var("ROOT_DIR").expect("NO ROOT_DIR SET!");
 
-    let start = std::time::Instant::now();
-    tracing::info!("🚀 STARTED PROCESSING");
-
     //* Create required directories */
     let _ = fs::create_dir_all(&root_dir);
     let output_path = OUTPUT_DIR.to_string();
@@ -35,13 +32,15 @@ fn main() {
     let mut cache = HashMap::new();
     if let Ok(cache_json) = fs::File::open(format!("{}/cache.json", *OUTPUT_DIR)) {
         let reader = BufReader::new(cache_json);
-
         let cached = serde_json::from_reader::<_, HashMap<u64, u64>>(reader);
-
         if let Ok(cached_data) = cached {
             cache = cached_data;
         }
     }
+
+    let start = std::time::Instant::now();
+    tracing::info!("🚀 STARTED PROCESSING");
+
     //* Index files */
     let mut index = FileIndex::default();
     index.create_index(&root_dir, &root_dir, &mut cache);
