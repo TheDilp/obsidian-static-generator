@@ -885,6 +885,24 @@
       text-decoration-line: underline;
     }
   }
+  .prose-h4\:text-lg {
+    & :is(:where(h4):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      font-size: var(--text-lg);
+      line-height: var(--tw-leading, var(--text-lg--line-height));
+    }
+  }
+  .prose-h5\:text-base {
+    & :is(:where(h5):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      font-size: var(--text-base);
+      line-height: var(--tw-leading, var(--text-base--line-height));
+    }
+  }
+  .prose-h6\:text-sm {
+    & :is(:where(h6):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      font-size: var(--text-sm);
+      line-height: var(--tw-leading, var(--text-sm--line-height));
+    }
+  }
   .prose-p\:my-4 {
     & :is(:where(p):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
       margin-block: calc(var(--spacing) * 4);
