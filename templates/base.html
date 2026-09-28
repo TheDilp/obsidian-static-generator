@@ -14,26 +14,51 @@
   <body
     class="bg-zinc-900 prose-p:text-white h-dvh overflow-hidden flex flex-nowrap w-dvw"
   >
-    <section class="bg-zinc-950 lg:w-72 px-8 pt-8 h-dvh flex flex-col">
-      <h2 class="text-lg font-bold border-b border-white mb-4 shrink-0">
-        <a
-          href="/{{output_dir}}/index.html"
-          class="w-full hover:text-sky-200 transition-colors"
-          >Wiki</a
+    <section
+      class="bg-zinc-950 lg:w-72 has-[#sidebar-toggle:checked]:lg:w-auto pt-8 h-dvh flex flex-col transition-[width,padding] duration-200"
+    >
+      <input type="checkbox" id="sidebar-toggle" class="peer hidden" />
+      <div
+        class="flex items-center justify-between gap-x-2 border-b border-white mb-4 shrink-0 pb-2 px-8 peer-checked:px-4"
+      >
+        <h2 class="text-lg font-bold peer-checked:hidden">
+          <a
+            href="/{{output_dir}}/index.html"
+            class="w-full hover:text-sky-200 transition-colors"
+            >Wiki</a
+          >
+        </h2>
+        <label
+          for="sidebar-toggle"
+          class="cursor-pointer text-zinc-400 hover:text-sky-200 transition-colors shrink-0"
+          title="Toggle sidebar"
         >
-      </h2>
-      <ul class="text-sm flex flex-col gap-y-1.5">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="size-5 peer-checked:rotate-180 transition-transform"
+          >
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </label>
+      </div>
+      <ul class="text-base flex flex-col gap-y-1 peer-checked:hidden">
         <li>
           <a
             href="/{{output_dir}}/index.html"
-            class="font-semibold text-zinc-400 hover:text-sky-200 transition-colors"
+            class="block font-bold uppercase tracking-wide text-zinc-200 hover:text-sky-200 hover:bg-zinc-900 px-8 py-1.5 transition-colors"
             >Pages</a
           >
         </li>
         <li>
           <a
             href="/{{output_dir}}/tags/index.html"
-            class="font-semibold text-zinc-400 hover:text-sky-200 transition-colors"
+            class="block font-bold uppercase tracking-wide text-zinc-200 hover:text-sky-200 hover:bg-zinc-900 px-8 py-1.5 transition-colors"
             >Tags</a
           >
         </li>
