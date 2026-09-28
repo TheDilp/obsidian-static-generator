@@ -1,5 +1,4 @@
-{% extends "base.html" %}
-{% block head %}
+{% extends "base.html" %} {% block head %}
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link
@@ -19,22 +18,22 @@
     }
   }
 </style>
-{% endblock head %}
-{% block content %}
-{% set_global total = 0 %}
-{% for item in links %}{% set_global total = total + item[1] | length %}{% endfor %}
+{% endblock head %} {% block content %} {% set_global total = 0 %} {% for item
+in links %}{% set_global total = total + item[1] | length %}{% endfor %}
 <div id="index-scroll" class="h-full w-full overflow-y-auto bg-ink">
   <div class="mx-auto w-full max-w-5xl px-6 py-14 sm:px-10 lg:px-12">
-
     <header class="mb-8 border-b border-hairline pb-6 sm:mb-12 sm:pb-8">
       <p class="font-mono text-xs uppercase tracking-[0.3em] text-lexicon-dim">
         Every published page
       </p>
-      <h1 class="mt-3 font-serif text-4xl italic text-parchment sm:text-5xl lg:text-6xl">
+      <h1
+        class="mt-3 font-serif text-4xl italic text-parchment sm:text-5xl lg:text-6xl"
+      >
         Index
       </h1>
       <p class="mt-3 font-mono text-sm text-lexicon-dim">
-        {{ total }} {% if total == 1 %}entry{% else %}entries{% endif %}, sorted A&ndash;Z
+        {{ total }} {% if total == 1 %}entry{% else %}entries{% endif %}, sorted
+        A&ndash;Z
       </p>
     </header>
 
@@ -67,7 +66,8 @@
           class="scroll-mt-6 border-b border-hairline py-6 first:pt-0 last:border-b-0 sm:py-7 lg:scroll-mt-14"
         >
           <div class="flex items-baseline gap-5">
-            <span class="font-serif text-5xl italic leading-none text-gold sm:text-6xl lg:text-7xl"
+            <span
+              class="font-serif text-5xl italic leading-none text-gold sm:text-6xl lg:text-7xl"
               >{{ item[0] }}</span
             >
             <span class="h-px flex-1 bg-hairline"></span>
@@ -77,10 +77,10 @@
           </div>
           <ul class="mt-6 columns-1 gap-x-10 sm:mt-7 sm:columns-2 lg:columns-3">
             {% for link in item[1] | sort(attribute="title") %}
-            <li class="break-inside-avoid">
+            <li data-link-title="{{ link.title }}" class="break-inside-avoid">
               <a
                 href="/{{ link.output_path }}"
-                class="inline-block max-w-full truncate py-2.5 text-[18px] text-lexicon transition-colors hover:text-gold sm:py-1.5 sm:text-[17px] lg:text-[20px]"
+                class="inline-block article-link max-w-full truncate py-2.5 text-[18px] text-lexicon transition-colors hover:text-gold sm:py-1.5 sm:text-[17px] lg:text-[20px]"
                 >{{ link.title }}</a
               >
             </li>
@@ -92,106 +92,7 @@
     </div>
   </div>
 </div>
-<script>
-  (function () {
-    var scrollRoot = document.getElementById("index-scroll");
-    var rail = document.getElementById("letter-rail");
-    var marker = document.getElementById("rail-marker");
-    if (!scrollRoot || !rail) return;
-
-    var railLinks = Array.prototype.slice.call(
-      rail.querySelectorAll("[data-letter]")
-    );
-    var sections = Array.prototype.slice.call(
-      document.querySelectorAll("[data-letter-section]")
-    );
-    if (!railLinks.length || !sections.length) return;
-
-    // The rail only renders at the lg breakpoint; skip all the tracking
-    // work otherwise, since links/scroll aren't in view to style.
-    var railQuery = window.matchMedia("(min-width: 1024px)");
-
-    var activeIndex = -1;
-
-    function applyState(index) {
-      railLinks.forEach(function (link, i) {
-        var dist = Math.abs(i - index);
-        if (dist === 0) {
-          link.style.color = "var(--color-gold)";
-          link.style.transform = "scale(1.6)";
-        } else if (dist === 1) {
-          link.style.color = "var(--color-lexicon)";
-          link.style.transform = "scale(1.2)";
-        } else {
-          link.style.color = "";
-          link.style.transform = "scale(1)";
-        }
-      });
-
-      var activeLink = railLinks[index];
-      if (marker && activeLink) {
-        marker.style.top =
-          activeLink.offsetTop + activeLink.offsetHeight / 2 + "px";
-        marker.style.opacity = "1";
-      }
-    }
-
-    function updateActive() {
-      if (!railQuery.matches) return;
-      var probeY = scrollRoot.getBoundingClientRect().top + 120;
-      var current = 0;
-      for (var i = 0; i < sections.length; i++) {
-        if (sections[i].getBoundingClientRect().top <= probeY) {
-          current = i;
-        } else {
-          break;
-        }
-      }
-      if (current !== activeIndex) {
-        activeIndex = current;
-        applyState(activeIndex);
-      }
-    }
-
-    var ticking = false;
-    function onScroll() {
-      if (!ticking) {
-        window.requestAnimationFrame(function () {
-          updateActive();
-          ticking = false;
-        });
-        ticking = true;
-      }
-    }
-
-    scrollRoot.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    if (railQuery.addEventListener) {
-      railQuery.addEventListener("change", updateActive);
-    }
-    updateActive();
-
-    // The display serif swaps in after first paint and grows the giant
-    // section letters, which shifts the whole list down mid-jump. Re-settle
-    // onto the intended target once fonts are actually done loading.
-    function resettle(id) {
-      if (!document.fonts || !document.fonts.ready) return;
-      document.fonts.ready.then(function () {
-        var target = document.getElementById(id);
-        if (target) target.scrollIntoView({ block: "start" });
-        updateActive();
-      });
-    }
-
-    if (window.location.hash) {
-      resettle(window.location.hash.slice(1));
-    }
-
-    railLinks.forEach(function (link) {
-      link.addEventListener("click", function () {
-        resettle(link.getAttribute("href").slice(1));
-      });
-    });
-  })();
-</script>
 {% endblock content %}
+{% block scripts %}
+<script src="/{{output_dir}}/index.js"></script>
+{% endblock scripts %}

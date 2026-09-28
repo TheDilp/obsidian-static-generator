@@ -30,6 +30,8 @@ fn main() {
     let output_path = OUTPUT_DIR.to_string();
     let _ = fs::create_dir_all(&output_path);
     let _ = fs::copy("static/output.css", format!("{}/output.css", output_path));
+    let _ = fs::copy("static/search.js", format!("{}/search.js", output_path));
+    let _ = fs::copy("static/index.js", format!("{}/index.js", output_path));
 
     let start = std::time::Instant::now();
     tracing::info!("🚀 STARTED PROCESSING");
