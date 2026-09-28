@@ -132,7 +132,7 @@ pub fn render_file(
 
     let tags_collection = frontmatter.tags.as_deref().map(|tags| {
         tags.iter()
-            .flat_map(|tag| tag.split("/").map(|i| i.to_string()))
+            .filter_map(|tag| tag.split("/").last().map(|t| t.to_string()))
     });
 
     let unique_tags: HashSet<String> = match tags_collection {
