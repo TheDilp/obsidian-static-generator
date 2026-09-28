@@ -1,6 +1,6 @@
 use std::{collections::HashSet, fs, io::Write, path::Path};
 
-use pulldown_cmark::{Event, LinkType, Tag, TagEnd};
+use pulldown_cmark::{CowStr, Event, LinkType, Tag, TagEnd};
 use tera::Context;
 use unidecode::unidecode;
 
@@ -12,11 +12,6 @@ use crate::{
         markdown_file::{MarkdownFile, Property},
     },
 };
-
-fn is_wikilink_published(dest_url: &str, published_titles: &HashSet<String>) -> bool {
-    let basename = dest_url.rsplit('/').next().unwrap_or(dest_url);
-    published_titles.contains(&unidecode(basename))
-}
 
 fn escape_html(text: &str) -> String {
     text.replace('&', "&amp;")
@@ -84,10 +79,27 @@ pub fn render_file(
         Event::Start(Tag::Link {
             link_type: LinkType::WikiLink { .. },
             ref dest_url,
-            ..
-        }) if !is_wikilink_published(dest_url, &file_index.published_titles) => {
-            in_unpublished_link = true;
-            None
+            ref title,
+            ref id,
+        }) => {
+            let basename = dest_url.rsplit('/').next().unwrap_or(dest_url);
+            let resolved_url = file_index
+                .link_lookup
+                .get(&unidecode(basename))
+                .map(|&idx| format!("/{}", file_index.link_summaries[idx].output_path));
+
+            match resolved_url {
+                Some(resolved_url) => Some(Event::Start(Tag::Link {
+                    link_type: LinkType::WikiLink { has_pothole: false },
+                    dest_url: CowStr::from(resolved_url),
+                    title: title.clone(),
+                    id: id.clone(),
+                })),
+                None => {
+                    in_unpublished_link = true;
+                    None
+                }
+            }
         }
         Event::End(TagEnd::Link) if in_unpublished_link => {
             in_unpublished_link = false;
