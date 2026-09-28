@@ -1,38 +1,37 @@
-{% extends "base.html" %}
-
-{% block nav_links %}
-{% for link in links | sort(attribute="title") %}
-<li>
-  <a href="{{ link.output_path }}" class="text-white"> {{ link.title }} </a>
+{% extends "base.html" %} {% block nav_links %} {% for link in links |
+sort(attribute="title") %}
+<li class="last:pb-2">
+  <a href="/{{ link.output_path }}" class="text-white"> {{ link.title }} </a>
 </li>
-{% endfor %}
-{% endblock nav_links %}
-{% block content %}
+{% endfor %} {% endblock nav_links %} {% block content %}
 <article
-  class="h-full xl:max-w-4xl prose-hr:my-0 prose-h1:underline prose-li:my-1 prose mx-auto w-full py-8 prose-p:my-4 prose-headings:my-4 overflow-y-auto">
+  class="h-full xl:max-w-4xl prose-hr:my-0 prose-h1:underline prose-li:my-1 prose mx-auto w-full py-8 prose-p:my-4 prose-headings:my-4 overflow-y-auto"
+>
   <h1>{{ title | safe }}</h1>
   {%if image%}
 
-
   <aside
-    class="not-prose w-full md:float-right md:clear-right md:ml-6 md:w-56 mb-6 rounded-lg overflow-hidden text-sm">
-    <img class="w-full object-cover max-h-72 block cursor-zoom-in" src="/{{image}}" alt="{{title}}" />
+    class="not-prose w-full md:float-right md:clear-right md:ml-6 md:w-56 mb-6 rounded-lg overflow-hidden text-sm"
+  >
+    <img
+      class="w-full object-cover max-h-72 block cursor-zoom-in"
+      src="/{{image}}"
+      alt="{{title}}"
+    />
   </aside>
   {%endif%}
   <div>
     {%for tag in tags%}
-    <span class="py-1 px-2 text-xs bg-zinc-600 overflow-hidden rounded-md">{{tag | replace(from="-", to=" ") |
-      safe}}</span>
+    <span class="py-1 px-2 text-xs bg-zinc-600 overflow-hidden rounded-md"
+      >{{tag | replace(from="-", to=" ") | safe}}</span
+    >
     {%endfor%}
   </div>
   {{ content | safe }}
 
   <footer class="text-sm">
-    <hr class="not-prose dark:border-zinc-800 mb-4">
+    <hr class="not-prose dark:border-zinc-800 mb-4" />
     Word count: {{content | wordcount}}
   </footer>
-
 </article>
 {% endblock content %}
-
-

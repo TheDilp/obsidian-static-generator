@@ -9,6 +9,7 @@ use tera::Context;
 use crate::{
     consts::{OUTPUT_DIR, TERA_ENGINE},
     models::{file_index::FileIndex, markdown_file::MarkdownFile},
+    process::render_file,
 };
 
 mod consts;
@@ -35,8 +36,20 @@ fn main() {
     //* Index files */
     let mut index = FileIndex::default();
     index.create_index(&root_dir, &root_dir);
+    tracing::info!("🏁 FINISHED INDEXING IN {:?}", start.elapsed());
+
     index.remove_unpublished_images();
+    tracing::info!("🏁 FINISHED REMOVING IN {:?}", start.elapsed());
+
     index.copy_images();
+    tracing::info!("🏁 FINISHED COPYING IMAGES IN {:?}", start.elapsed());
+
+    for file in &index.markdown_files {
+        if let Err(err) = render_file(file, &index) {
+            println!("{err}");
+            continue;
+        }
+    }
 
     let index_file_create = fs::File::create(format!("{}/index.html", *OUTPUT_DIR));
 
@@ -50,7 +63,9 @@ fn main() {
                 grouped_index.entry(letter).or_default().push(item);
             };
         }
-        index_context.insert("links", &grouped_index);
+        let mut pairs: Vec<(char, Vec<MarkdownFile>)> = grouped_index.into_iter().collect();
+        pairs.sort_by_key(|a| a.0);
+        index_context.insert("links", &pairs);
 
         let content = TERA_ENGINE.render("index.html", &index_context).unwrap();
 

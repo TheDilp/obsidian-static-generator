@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block nav_links %}
-{% for key, link_list in links %}
-{% for link in link_list | sort(attribute="title")  %}
+{% for item in links %}
+{% for link in item[1] | sort(attribute="title") %}
 <li>
-  <a href="{{ link.output_path  }}" class="text-white"> {{ link.title }} </a>
+  <a href="/{{ link.output_path  }}" class="text-white"> {{ link.title }} </a>
 </li>
 {%endfor%}
 {% endfor %}
@@ -12,17 +12,21 @@
 <div class="flex w-full flex-col gap-y-4 p-8 max-h-full overflow-y-auto">
   <h2 class="text-3xl font-bold">Index</h2>
   <ul class="w-full flex flex-col gap-y-4">
-    {% for key, link_list in links %}
+    {% for item in links %}
     <li>
-      <h3 class="text-lg font-bold my-1">{{ key }}</h3>
+      <h3 class="text-lg font-bold my-1">{{ item[0] }}</h3>
       <ul class="border rounded-md w-full overflow-hidden border-zinc-800">
-        {% for link in link_list | sort(attribute="title") %}
+        {% for link in item[1] | sort(attribute="title") %}
         <li class="odd:bg-zinc-800 p-1.5">
-          <a href="{{ link.output_path }}" class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"> {{ link.title }} </a>
+          <a
+            href="/{{ link.output_path }}"
+            class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"
+          >
+            {{ link.title }}
+          </a>
         </li>
         {% endfor %}
       </ul>
-
     </li>
     {% endfor %}
   </ul>

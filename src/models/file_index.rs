@@ -7,7 +7,6 @@ use crate::{
         markdown_file::{Frontmatter, MarkdownFile},
     },
     preprocess::get_valid_entries_from_dir,
-    process::render_file,
 };
 
 use std::{
@@ -124,11 +123,6 @@ impl FileIndex {
                             for img in &new_file.images {
                                 self.markdown_image_files
                                     .insert(img.replace("[[", "").replace("]]", ""));
-                            }
-
-                            if let Err(err) = render_file(&new_file, self) {
-                                println!("{err}");
-                                continue;
                             }
 
                             self.markdown_files.push(new_file);
