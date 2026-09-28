@@ -1,2 +1,15 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography"
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --color-ink: #0b0b0c;
+  --color-panel: #16150f;
+  --color-hairline: #242219;
+  --color-hairline-strong: #3a3626;
+  --color-gold: #c6a15b;
+  --color-parchment: #ede6d3;
+  --color-lexicon: #d8d6d0;
+  --color-lexicon-dim: #7a776d;
+  --color-lexicon-faint: #514f47;
+}

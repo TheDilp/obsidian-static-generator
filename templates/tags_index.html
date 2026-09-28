@@ -1,18 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="flex w-full h-full flex-col gap-y-4 p-8">
-  <h2 class="text-3xl font-bold">Tags</h2>
-  <ul class="border rounded-md w-full flex-1 min-h-0 overflow-y-auto border-zinc-800">
-    {% for tag in tags %}
-    <li class="odd:bg-zinc-800 p-1.5">
-      <a
-        href="/{{ output_dir }}/tags/{{ tag }}.html"
-        class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"
-      >
-        {{ tag }}
-      </a>
-    </li>
-    {% endfor %}
-  </ul>
+<div class="h-full w-full overflow-y-auto bg-ink">
+  <div class="mx-auto w-full max-w-5xl px-6 py-14 sm:px-10 lg:px-12">
+
+    <header class="mb-8 border-b border-hairline pb-6 sm:mb-12 sm:pb-8">
+      <p class="font-mono text-xs uppercase tracking-[0.3em] text-lexicon-dim">
+        Every topic
+      </p>
+      <h1 class="mt-3 font-serif text-4xl italic text-parchment sm:text-5xl lg:text-6xl">
+        Tags
+      </h1>
+      <p class="mt-3 font-mono text-sm text-lexicon-dim">
+        {{ tags | length }} {% if tags | length == 1 %}tag{% else %}tags{% endif %}, sorted A&ndash;Z
+      </p>
+    </header>
+
+    {% if tags | length > 0 %}
+    <ul class="flex flex-wrap gap-3">
+      {% for tag in tags %}
+      <li>
+        <a
+          href="/{{ output_dir }}/tags/{{ tag }}.html"
+          class="inline-block rounded-full border border-hairline px-4 py-1.5 font-mono text-xs uppercase tracking-[0.15em] text-lexicon-dim transition-colors hover:border-gold hover:text-gold"
+          >{{ tag }}</a
+        >
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="font-mono text-sm text-lexicon-dim">No tags yet.</p>
+    {% endif %}
+
+  </div>
 </div>
 {% endblock content %}

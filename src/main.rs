@@ -99,6 +99,7 @@ fn main() {
             Ok(mut tag_file) => {
                 let mut tag_context = Context::new();
                 tag_context.insert("output_dir", &*OUTPUT_DIR);
+                tag_context.insert("section", "tags");
                 tag_context.insert("tag", tag);
                 tag_context.insert("links", links);
 
@@ -114,6 +115,7 @@ fn main() {
     if let Ok(mut tags_index_file) = tags_index_create {
         let mut tags_index_context = Context::new();
         tags_index_context.insert("output_dir", &*OUTPUT_DIR);
+        tags_index_context.insert("section", "tags");
         let tag_names: Vec<&String> = tag_pairs.iter().map(|(tag, _)| tag).collect();
         tags_index_context.insert("tags", &tag_names);
 
@@ -130,6 +132,7 @@ fn main() {
     if let Ok(mut index_file) = index_file_create {
         let mut index_context = Context::new();
         index_context.insert("output_dir", &*OUTPUT_DIR);
+        index_context.insert("section", "pages");
         let mut grouped_index: HashMap<char, Vec<LinkSummary>> = HashMap::new();
 
         for item in index.link_summaries {
