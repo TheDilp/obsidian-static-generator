@@ -3,13 +3,13 @@
 
 @theme {
   --font-serif: "Fraunces", ui-serif, Georgia, serif;
-  --color-ink: #0b0b0c;
-  --color-panel: #16150f;
-  --color-hairline: #242219;
-  --color-hairline-strong: #3a3626;
-  --color-gold: #c6a15b;
-  --color-parchment: #ede6d3;
-  --color-lexicon: #d8d6d0;
-  --color-lexicon-dim: #948d7a;
-  --color-lexicon-faint: #514f47;
+  --color-ink: var(--color-stone-950);
+  --color-panel: var(--color-stone-900);
+  --color-hairline: var(--color-stone-800);
+  --color-hairline-strong: var(--color-stone-700);
+  --color-gold: var(--color-amber-400);
+  --color-parchment: var(--color-stone-100);
+  --color-lexicon: var(--color-stone-300);
+  --color-lexicon-dim: var(--color-stone-400);
+  --color-lexicon-faint: var(--color-stone-600);
 }
