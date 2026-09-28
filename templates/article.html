@@ -1,6 +1,6 @@
 {% extends "base.html" %} {% block content %}
 <article
-  class="h-full xl:max-w-4xl prose-hr:my-0 prose-h1:underline prose-li:my-1 prose prose-invert mx-auto w-full py-8 prose-p:my-4 prose-headings:my-4 prose-h4:text-lg prose-h5:text-base prose-h6:text-sm overflow-y-auto"
+  class="h-full max-w-3xl xl:max-w-5xl prose-hr:my-0 prose-h1:underline prose-li:my-1 prose prose-invert mx-auto w-full py-8 prose-p:my-4 prose-headings:my-4 prose-h4:text-lg prose-h5:text-base prose-h6:text-sm overflow-y-auto"
 >
   <h1>{{ title | safe }}</h1>
   {% if image or properties or tags %}
@@ -25,7 +25,11 @@
             Tags
           </th>
           <td class="px-3 py-2 font-mono text-xs text-zinc-200 break-words">
-          {% for tag in tags | sort %}<a href="/{{ output_dir }}/tags/{{ tag }}.html" class="hover:underline">{{ tag }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+            {% for tag in tags | sort %}<a
+              href="/{{ output_dir }}/tags/{{ tag }}.html"
+              class="hover:underline"
+              >{{ tag }}</a
+            >{% if not loop.last %}, {% endif %}{% endfor %}
           </td>
         </tr>
         {% endif %} {% for prop in properties %}
