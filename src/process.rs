@@ -44,7 +44,7 @@ fn render_property_value(value: &str, file_index: &FileIndex) -> String {
                 if let Some(&idx) = file_index.link_lookup.get(&unidecode(basename)) {
                     let output_path = &file_index.link_summaries[idx].output_path;
                     output.push_str(&format!(
-                        r#"<a class="text-blue-400 hover:underline" href="/{}">"#,
+                        r#"<a class="text-blue-400 font-semibold hover:underline" href="/{}">"#,
                         output_path
                     ));
                     link_open = true;
