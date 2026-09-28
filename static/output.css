@@ -52,7 +52,7 @@
     --color-gold: #c6a15b;
     --color-parchment: #ede6d3;
     --color-lexicon: #d8d6d0;
-    --color-lexicon-dim: #7a776d;
+    --color-lexicon-dim: #948d7a;
     --color-lexicon-faint: #514f47;
   }
 }
@@ -865,11 +865,20 @@
       background-color: color-mix(in oklab, var(--color-ink) 60%, transparent);
     }
   }
-  .bg-panel {
-    background-color: var(--color-panel);
-  }
   .bg-zinc-950 {
     background-color: var(--color-zinc-950);
+  }
+  .bg-gradient-to-b {
+    --tw-gradient-position: to bottom in oklab;
+    background-image: linear-gradient(var(--tw-gradient-stops));
+  }
+  .from-panel {
+    --tw-gradient-from: var(--color-panel);
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  }
+  .to-\[\#100f0a\] {
+    --tw-gradient-to: #100f0a;
+    --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
   }
   .object-cover {
     object-fit: cover;
@@ -1011,8 +1020,8 @@
   .opacity-0 {
     opacity: 0%;
   }
-  .shadow-\[0_1px_0_0_rgba\(0\,0\,0\,0\.5\)\] {
-    --tw-shadow: 0 1px 0 0 var(--tw-shadow-color, rgba(0,0,0,0.5));
+  .shadow-\[0_1px_0_0_rgba\(0\,0\,0\,0\.35\)\] {
+    --tw-shadow: 0 1px 0 0 var(--tw-shadow-color, rgba(0,0,0,0.35));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
   .transition-\[color\,transform\] {
@@ -1268,6 +1277,22 @@
       margin-block: calc(var(--spacing) * 4);
     }
   }
+  .prose-headings\:border-b {
+    & :is(:where(h1, h2, h3, h4, h5, h6, th):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      border-bottom-style: var(--tw-border-style);
+      border-bottom-width: 1px;
+    }
+  }
+  .prose-headings\:border-zinc-800 {
+    & :is(:where(h1, h2, h3, h4, h5, h6, th):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      border-color: var(--color-zinc-800);
+    }
+  }
+  .prose-headings\:pb-1 {
+    & :is(:where(h1, h2, h3, h4, h5, h6, th):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+      padding-bottom: var(--spacing);
+    }
+  }
   .prose-h1\:underline {
     & :is(:where(h1):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
       text-decoration-line: underline;
@@ -1361,6 +1386,48 @@
   syntax: "*";
   inherits: false;
   initial-value: solid;
+}
+@property --tw-gradient-position {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-gradient-from {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-via {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-to {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-stops {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-gradient-via-stops {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-gradient-from-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --tw-gradient-via-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+@property --tw-gradient-to-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
 }
 @property --tw-leading {
   syntax: "*";
@@ -1460,6 +1527,15 @@
       --tw-skew-y: initial;
       --tw-space-y-reverse: 0;
       --tw-border-style: solid;
+      --tw-gradient-position: initial;
+      --tw-gradient-from: #0000;
+      --tw-gradient-via: #0000;
+      --tw-gradient-to: #0000;
+      --tw-gradient-stops: initial;
+      --tw-gradient-via-stops: initial;
+      --tw-gradient-from-position: 0%;
+      --tw-gradient-via-position: 50%;
+      --tw-gradient-to-position: 100%;
       --tw-leading: initial;
       --tw-font-weight: initial;
       --tw-tracking: initial;
