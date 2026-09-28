@@ -51,14 +51,20 @@ pub fn render_file(
     let mut html_output = String::new();
 
     pulldown_cmark::html::push_html(&mut html_output, events);
-
     let frontmatter = &markdown_file.frontmatter;
+
+    let filtered_properties: &Vec<_> = &markdown_file
+        .properties
+        .iter()
+        .filter(|p| p.key.to_lowercase() != "tags")
+        .collect();
 
     let mut context = Context::new();
     context.insert("title", &markdown_file.title);
     context.insert("content", &html_output);
     context.insert("links", &file_index.link_summaries);
     context.insert("output_dir", &*OUTPUT_DIR);
+    context.insert("properties", filtered_properties);
     if let Some(image) = frontmatter.image.as_ref().and_then(|images| images.first()) {
         let image_title = image.replace("[[", "").replace("]]", "");
 
@@ -72,10 +78,17 @@ pub fn render_file(
         }
     }
 
-    context.insert(
-        "tags",
-        frontmatter.tags.as_deref().unwrap_or_default(),
-    );
+    let tags_collection = frontmatter.tags.as_deref().map(|tags| {
+        tags.iter()
+            .flat_map(|tag| tag.split("/").map(|i| i.to_string()))
+    });
+
+    let unique_tags: HashSet<String> = match tags_collection {
+        Some(tags) => tags.collect(),
+        None => HashSet::default(),
+    };
+
+    context.insert("tags", &unique_tags);
 
     let new_path = &markdown_file.output_path;
 

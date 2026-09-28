@@ -4,7 +4,7 @@ use crate::{
     error::FileRenderError,
     models::{
         image_files::ImageFileLink,
-        markdown_file::{Frontmatter, LinkSummary, MarkdownFile},
+        markdown_file::{Frontmatter, LinkSummary, MarkdownFile, Property},
     },
     preprocess::get_valid_entries_from_dir,
 };
@@ -17,9 +17,70 @@ use std::{
     path::Path,
 };
 
+use gray_matter::{
+    Pod,
+    engine::{Engine, YAML},
+};
 use unidecode::unidecode;
 
 use crate::consts::{MATTER, OUTPUT_DIR};
+
+/// Frontmatter keys already surfaced elsewhere and excluded from the infobox table.
+const RESERVED_PROPERTY_KEYS: [&str; 2] = ["publish", "image"];
+
+fn pod_to_display_string(pod: &Pod) -> Option<String> {
+    match pod {
+        Pod::Null => None,
+        Pod::String(value) => Some(value.clone()),
+        Pod::Integer(value) => Some(value.to_string()),
+        Pod::Float(value) => Some(value.to_string()),
+        Pod::Boolean(value) => Some(if *value { "Yes".to_string() } else { "No".to_string() }),
+        Pod::Array(items) => {
+            let joined = items
+                .iter()
+                .filter_map(pod_to_display_string)
+                .collect::<Vec<_>>()
+                .join(", ");
+            joined.is_empty().not().then_some(joined)
+        }
+        //* Nested objects aren't displayed in the infobox table */
+        Pod::Hash(_) => None,
+    }
+}
+
+fn format_property_key(key: &str) -> String {
+    key.split(['_', '-'])
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn build_properties(raw_matter: &str) -> Vec<Property> {
+    let Ok(Pod::Hash(fields)) = YAML::parse(raw_matter) else {
+        return vec![];
+    };
+
+    let mut properties: Vec<Property> = fields
+        .iter()
+        .filter(|(key, _)| !RESERVED_PROPERTY_KEYS.contains(&key.as_str()))
+        .filter_map(|(key, value)| {
+            pod_to_display_string(value).map(|value| Property {
+                key: format_property_key(key),
+                value,
+            })
+        })
+        .collect();
+
+    properties.sort_by(|a, b| a.key.cmp(&b.key));
+    properties
+}
 
 #[derive(Default)]
 pub struct FileIndex {
@@ -106,6 +167,7 @@ impl FileIndex {
                                 .into_owned();
 
                             let title = title.replace(".md", "");
+                            let properties = build_properties(&frontmatter.matter);
 
                             let fm = frontmatter.data.unwrap();
                             let mut new_file = MarkdownFile {
@@ -115,6 +177,7 @@ impl FileIndex {
                                 content: frontmatter.content,
                                 frontmatter: fm.clone(),
                                 images: vec![],
+                                properties,
                             };
 
                             new_file.images = fm.image.unwrap_or_default();

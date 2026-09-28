@@ -6,6 +6,12 @@ pub struct LinkSummary {
     pub output_path: String,
 }
 
+#[derive(Serialize, Debug, Clone)]
+pub struct Property {
+    pub key: String,
+    pub value: String,
+}
+
 #[derive(Serialize, Debug)]
 pub struct MarkdownFile {
     pub title: String,
@@ -14,6 +20,7 @@ pub struct MarkdownFile {
     pub frontmatter: Frontmatter,
     pub content: String,
     pub images: Vec<String>,
+    pub properties: Vec<Property>,
 }
 
 #[derive(Deserialize, Debug, Clone, Serialize)]

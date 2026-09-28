@@ -8,26 +8,49 @@ sort(attribute="title") %}
   class="h-full xl:max-w-4xl prose-hr:my-0 prose-h1:underline prose-li:my-1 prose mx-auto w-full py-8 prose-p:my-4 prose-headings:my-4 overflow-y-auto"
 >
   <h1>{{ title | safe }}</h1>
-  {%if image%}
-
+  {% if image or properties or tags %}
   <aside
-    class="not-prose w-full md:float-right md:clear-right md:ml-6 md:w-56 mb-6 rounded-lg overflow-hidden text-sm"
+    class="not-prose w-full md:float-right md:clear-right md:ml-6 md:w-64 mb-6 rounded-md border border-zinc-800 bg-zinc-950 text-sm overflow-hidden"
   >
+    {% if image %}
     <img
       class="w-full object-cover max-h-72 block cursor-zoom-in"
       src="/{{image}}"
       alt="{{title}}"
     />
+    {% endif %} {% if properties or tags %}
+    <table class="w-full border-collapse">
+      <tbody>
+        {% if tags %}
+        <tr class="odd:bg-zinc-900/60 align-top">
+          <th
+            scope="row"
+            class="w-2/5 px-3 py-2 text-left font-semibold uppercase tracking-wider text-[0.65rem] text-zinc-500"
+          >
+            Tags
+          </th>
+          <td class="px-3 py-2 font-mono text-xs text-zinc-200 break-words">
+          {{ tags | sort | join(sep=", ") }}
+          </td>
+        </tr>
+        {% endif %} {% for prop in properties %}
+        <tr class="odd:bg-zinc-900/60 align-top">
+          <th
+            scope="row"
+            class="w-2/5 px-3 py-2 text-left font-semibold uppercase tracking-wider text-[0.65rem] text-zinc-500"
+          >
+            {{ prop.key }}
+          </th>
+          <td class="px-3 py-2 font-mono text-xs text-zinc-200 break-words">
+            {{ prop.value }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
   </aside>
-  {%endif%}
-  <div>
-    {%for tag in tags%}
-    <span class="py-1 px-2 text-xs bg-zinc-600 overflow-hidden rounded-md"
-      >{{tag | replace(from="-", to=" ") | safe}}</span
-    >
-    {%endfor%}
-  </div>
-  {{ content | safe }}
+  {% endif %} {{ content | safe }}
 
   <footer class="text-sm">
     <hr class="not-prose dark:border-zinc-800 mb-4" />
