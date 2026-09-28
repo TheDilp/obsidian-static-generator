@@ -1,13 +1,4 @@
 {% extends "base.html" %}
-{% block nav_links %}
-{% for item in links %}
-{% for link in item[1] | sort(attribute="title") %}
-<li>
-  <a href="/{{ link.output_path  }}" class="text-white"> {{ link.title }} </a>
-</li>
-{%endfor%}
-{% endfor %}
-{% endblock nav_links %}
 {% block content %}
 <div class="flex w-full flex-col gap-y-4 p-8 max-h-full overflow-y-auto">
   <h2 class="text-3xl font-bold">Index</h2>
