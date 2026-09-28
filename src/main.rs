@@ -4,11 +4,12 @@ use std::{
     io::Write,
 };
 
+use rayon::prelude::*;
 use tera::Context;
 
 use crate::{
     consts::{OUTPUT_DIR, TERA_ENGINE},
-    models::{file_index::FileIndex, markdown_file::MarkdownFile},
+    models::{file_index::FileIndex, markdown_file::LinkSummary},
     process::render_file,
 };
 
@@ -44,26 +45,42 @@ fn main() {
     index.copy_images();
     tracing::info!("🏁 FINISHED COPYING IMAGES IN {:?}", start.elapsed());
 
-    for file in &index.markdown_files {
-        if let Err(err) = render_file(file, &index) {
-            println!("{err}");
-            continue;
-        }
-    }
+    let render_results: Vec<_> = index
+        .markdown_files
+        .par_iter()
+        .map(|file| render_file(file, &index))
+        .collect();
+
+    let error_count = render_results
+        .iter()
+        .filter(|res| res.is_err())
+        .inspect(|res| {
+            if let Err(err) = res {
+                tracing::error!("{err}");
+            }
+        })
+        .count();
+
+    tracing::info!(
+        "🏁 FINISHED RENDERING {} FILES ({} errors) IN {:?}",
+        render_results.len(),
+        error_count,
+        start.elapsed()
+    );
 
     let index_file_create = fs::File::create(format!("{}/index.html", *OUTPUT_DIR));
 
     if let Ok(mut index_file) = index_file_create {
         let mut index_context = Context::new();
         index_context.insert("output_dir", &*OUTPUT_DIR);
-        let mut grouped_index: HashMap<char, Vec<MarkdownFile>> = HashMap::new();
+        let mut grouped_index: HashMap<char, Vec<LinkSummary>> = HashMap::new();
 
-        for item in index.markdown_files {
+        for item in index.link_summaries {
             if let Some(letter) = item.title.chars().next() {
                 grouped_index.entry(letter).or_default().push(item);
             };
         }
-        let mut pairs: Vec<(char, Vec<MarkdownFile>)> = grouped_index.into_iter().collect();
+        let mut pairs: Vec<(char, Vec<LinkSummary>)> = grouped_index.into_iter().collect();
         pairs.sort_by_key(|a| a.0);
         index_context.insert("links", &pairs);
 

@@ -1,4 +1,4 @@
-use std::{fs, io::Write};
+use std::{fs, io::Write, path::Path};
 
 use tera::Context;
 use unidecode::unidecode;
@@ -24,43 +24,31 @@ pub fn render_file(
     let mut context = Context::new();
     context.insert("title", &markdown_file.title);
     context.insert("content", &html_output);
-    context.insert("links", &file_index.markdown_files);
+    context.insert("links", &file_index.link_summaries);
     context.insert("output_dir", &*OUTPUT_DIR);
     if let Some(image) = frontmatter.image.as_ref().and_then(|images| images.first()) {
         let image_title = image.replace("[[", "").replace("]]", "");
 
         let image_file = file_index
-            .image_files
-            .iter()
-            .find(|img| unidecode(&img.title).ends_with(&unidecode(image_title.as_str())));
+            .image_lookup
+            .get(&unidecode(image_title.as_str()))
+            .map(|&idx| &file_index.image_files[idx]);
 
         if let Some(image_file) = image_file {
-            let mut dirs_path = image_file.link.split("/").collect::<Vec<&str>>();
-            dirs_path.pop();
-            let dirs_path = dirs_path.join("/");
-            let _ = fs::create_dir_all(&dirs_path).inspect(|_| {
-                let res = fs::copy(&image_file.original_path, &image_file.link);
-                if res.is_ok() {
-                    context.insert("image", &image_file.link);
-                } else {
-                    eprintln!("{}", res.err().unwrap());
-                }
-            });
+            context.insert("image", &image_file.link);
         }
     }
 
-    let tags = frontmatter.tags.clone().unwrap_or_default();
-
-    context.insert("tags", &tags);
+    context.insert(
+        "tags",
+        frontmatter.tags.as_deref().unwrap_or_default(),
+    );
 
     let new_path = &markdown_file.output_path;
 
-    let mut path_segments = new_path.split("/").collect::<Vec<&str>>();
-
-    path_segments.pop().unwrap_or_default();
-    let dirs_path = path_segments.join("/");
-
-    let _ = fs::create_dir_all(&dirs_path);
+    if let Some(dirs_path) = Path::new(new_path).parent() {
+        let _ = fs::create_dir_all(dirs_path);
+    }
 
     let render_file = fs::File::create(new_path);
 

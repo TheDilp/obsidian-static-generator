@@ -24,8 +24,9 @@ fn is_valid_entry(entry: &DirEntry) -> bool {
 pub fn get_valid_entries_from_dir(dir: &str) -> Content {
     if let Ok(directory) = fs::read_dir(dir) {
         directory
-            .filter(|f| f.as_ref().is_ok_and(is_valid_entry))
-            .collect::<Vec<Result<DirEntry, std::io::Error>>>()
+            .filter_map(Result::ok)
+            .filter(is_valid_entry)
+            .collect::<Vec<DirEntry>>()
     } else {
         vec![]
     }

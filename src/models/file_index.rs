@@ -4,39 +4,40 @@ use crate::{
     error::FileRenderError,
     models::{
         image_files::ImageFileLink,
-        markdown_file::{Frontmatter, MarkdownFile},
+        markdown_file::{Frontmatter, LinkSummary, MarkdownFile},
     },
     preprocess::get_valid_entries_from_dir,
 };
 
 use std::{
+    collections::HashMap,
     fs::{self},
     io::Read,
     ops::Not,
+    path::Path,
 };
 
-use gray_matter::{Matter, engine::YAML};
+use unidecode::unidecode;
 
-use crate::consts::OUTPUT_DIR;
+use crate::consts::{MATTER, OUTPUT_DIR};
 
 #[derive(Default)]
 pub struct FileIndex {
     pub markdown_files: Vec<MarkdownFile>,
+    pub link_summaries: Vec<LinkSummary>,
     pub image_files: Vec<ImageFileLink>,
     pub markdown_image_files: HashSet<String>,
+    pub image_lookup: HashMap<String, usize>,
 }
 
 impl FileIndex {
     pub fn create_index(&mut self, dir: &str, root_dir: &str) {
         let content = get_valid_entries_from_dir(dir);
 
-        for item in content
-            .iter()
-            .filter(|entry| entry.as_ref().is_ok_and(|s| s.file_type().is_ok()))
-        {
-            //* Checked above */
-            let entry = item.as_ref().unwrap();
-            let file_type = entry.file_type().unwrap();
+        for entry in content {
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
 
             let title = entry
                 .file_name()
@@ -79,9 +80,7 @@ impl FileIndex {
                         }
 
                         //* Extract the frontmatter  */
-                        let matter = Matter::<YAML>::new();
-
-                        let parsed_matter = matter.parse::<Frontmatter>(&file_content);
+                        let parsed_matter = MATTER.parse::<Frontmatter>(&file_content);
 
                         if let Ok(frontmatter) = parsed_matter
                             && frontmatter
@@ -100,11 +99,10 @@ impl FileIndex {
                                 .unwrap_or(&origin_path)
                                 .trim_start_matches('/')
                                 .to_string();
-                            let output_path = format!(
-                                "{}/{}",
-                                *OUTPUT_DIR,
-                                relative_path.replace(".md", ".html")
-                            );
+                            let output_path = Path::new(&*OUTPUT_DIR)
+                                .join(relative_path.replace(".md", ".html"))
+                                .to_string_lossy()
+                                .into_owned();
 
                             let title = title.replace(".md", "");
 
@@ -125,6 +123,10 @@ impl FileIndex {
                                     .insert(img.replace("[[", "").replace("]]", ""));
                             }
 
+                            self.link_summaries.push(LinkSummary {
+                                title: new_file.title.clone(),
+                                output_path: new_file.output_path.clone(),
+                            });
                             self.markdown_files.push(new_file);
                         }
                     }
@@ -140,7 +142,10 @@ impl FileIndex {
                             .unwrap_or(&original_path)
                             .trim_start_matches('/')
                             .to_string();
-                        let link = format!("{}/{}", *OUTPUT_DIR, relative_path);
+                        let link = Path::new(&*OUTPUT_DIR)
+                            .join(&relative_path)
+                            .to_string_lossy()
+                            .into_owned();
                         self.image_files.push(ImageFileLink {
                             title,
                             link,
@@ -161,14 +166,22 @@ impl FileIndex {
     pub fn remove_unpublished_images(&mut self) {
         self.image_files
             .retain(|img| self.markdown_image_files.contains(&img.title));
+
+        self.image_lookup = self
+            .image_files
+            .iter()
+            .enumerate()
+            .map(|(idx, img)| (unidecode(&img.title), idx))
+            .collect();
     }
 
     pub fn copy_images(&self) {
         for image in &self.image_files {
-            let mut dirs_path = image.link.split("/").collect::<Vec<&str>>();
-            dirs_path.pop();
-            let dirs_path = dirs_path.join("/");
-            let res = fs::create_dir_all(&dirs_path).inspect(|_| {
+            let dirs_path = Path::new(&image.link).parent();
+            let Some(dirs_path) = dirs_path else {
+                continue;
+            };
+            let res = fs::create_dir_all(dirs_path).inspect(|_| {
                 let copy_res = fs::copy(&image.original_path, &image.link);
 
                 if copy_res.is_err() {

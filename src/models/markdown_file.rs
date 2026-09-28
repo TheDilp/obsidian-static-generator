@@ -1,5 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Debug, Clone)]
+pub struct LinkSummary {
+    pub title: String,
+    pub output_path: String,
+}
+
 #[derive(Serialize, Debug)]
 pub struct MarkdownFile {
     pub title: String,
