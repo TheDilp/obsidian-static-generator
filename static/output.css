@@ -751,6 +751,11 @@
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .last\:pb-2 {
+    &:last-child {
+      padding-bottom: calc(var(--spacing) * 2);
+    }
+  }
   .odd\:bg-zinc-800 {
     &:nth-child(odd) {
       background-color: var(--color-zinc-800);
