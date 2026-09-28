@@ -7,12 +7,60 @@ use unidecode::unidecode;
 use crate::{
     consts::{MARKDOWN_PARSER_OPTIONS, OUTPUT_DIR, TERA_ENGINE},
     error::FileRenderError,
-    models::{file_index::FileIndex, markdown_file::MarkdownFile},
+    models::{
+        file_index::FileIndex,
+        markdown_file::{MarkdownFile, Property},
+    },
 };
 
 fn is_wikilink_published(dest_url: &str, published_titles: &HashSet<String>) -> bool {
     let basename = dest_url.rsplit('/').next().unwrap_or(dest_url);
     published_titles.contains(&unidecode(basename))
+}
+
+fn escape_html(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+/// Renders `[[WikiLink]]` references in a property value: a link to a
+/// published note, or plain text when the target isn't published.
+fn render_property_value(value: &str, file_index: &FileIndex) -> String {
+    let parser = pulldown_cmark::Parser::new_ext(value, *MARKDOWN_PARSER_OPTIONS);
+    let mut output = String::new();
+    let mut link_open = false;
+
+    for event in parser {
+        match event {
+            Event::Start(Tag::Link {
+                link_type: LinkType::WikiLink { .. },
+                ref dest_url,
+                ..
+            }) => {
+                let basename = dest_url.rsplit('/').next().unwrap_or(dest_url);
+                if let Some(&idx) = file_index.link_lookup.get(&unidecode(basename)) {
+                    let output_path = &file_index.link_summaries[idx].output_path;
+                    output.push_str(&format!(
+                        r#"<a class="text-blue-400 hover:underline" href="/{}">"#,
+                        output_path
+                    ));
+                    link_open = true;
+                }
+            }
+            Event::End(TagEnd::Link) if link_open => {
+                output.push_str("</a>");
+                link_open = false;
+            }
+            Event::Text(text) | Event::Code(text) => output.push_str(&escape_html(&text)),
+            Event::SoftBreak | Event::HardBreak => output.push(' '),
+            _ => {}
+        }
+    }
+
+    output
 }
 
 pub fn render_file(
@@ -53,10 +101,14 @@ pub fn render_file(
     pulldown_cmark::html::push_html(&mut html_output, events);
     let frontmatter = &markdown_file.frontmatter;
 
-    let filtered_properties: &Vec<_> = &markdown_file
+    let filtered_properties: Vec<Property> = markdown_file
         .properties
         .iter()
         .filter(|p| p.key.to_lowercase() != "tags")
+        .map(|p| Property {
+            key: p.key.clone(),
+            value: render_property_value(&p.value, file_index),
+        })
         .collect();
 
     let mut context = Context::new();
@@ -64,7 +116,7 @@ pub fn render_file(
     context.insert("content", &html_output);
     context.insert("links", &file_index.link_summaries);
     context.insert("output_dir", &*OUTPUT_DIR);
-    context.insert("properties", filtered_properties);
+    context.insert("properties", &filtered_properties);
     if let Some(image) = frontmatter.image.as_ref().and_then(|images| images.first()) {
         let image_title = image.replace("[[", "").replace("]]", "");
 

@@ -42,7 +42,7 @@ sort(attribute="title") %}
             {{ prop.key }}
           </th>
           <td class="px-3 py-2 font-mono text-xs text-zinc-200 break-words">
-            {{ prop.value }}
+            {{ prop.value | safe }}
           </td>
         </tr>
         {% endfor %}
