@@ -12,6 +12,7 @@
     --color-sky-600: oklch(58.8% 0.158 241.966);
     --color-blue-400: oklch(70.7% 0.165 254.624);
     --color-zinc-200: oklch(92% 0.004 286.32);
+    --color-zinc-400: oklch(70.5% 0.015 286.067);
     --color-zinc-500: oklch(55.2% 0.016 285.938);
     --color-zinc-800: oklch(27.4% 0.006 286.033);
     --color-zinc-900: oklch(21% 0.006 285.885);
@@ -188,6 +189,9 @@
   }
 }
 @layer utilities {
+  .collapse {
+    visibility: collapse;
+  }
   .static {
     position: static;
   }
@@ -636,6 +640,9 @@
   .max-h-72 {
     max-height: calc(var(--spacing) * 72);
   }
+  .max-h-\[70vh\] {
+    max-height: 70vh;
+  }
   .max-h-full {
     max-height: 100%;
   }
@@ -789,6 +796,9 @@
   }
   .text-zinc-200 {
     color: var(--color-zinc-200);
+  }
+  .text-zinc-400 {
+    color: var(--color-zinc-400);
   }
   .text-zinc-500 {
     color: var(--color-zinc-500);

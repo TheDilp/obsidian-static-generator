@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs::{self},
     io::Write,
 };
@@ -67,6 +67,63 @@ fn main() {
         error_count,
         start.elapsed()
     );
+
+    //* Build tag -> articles map (nested tags collapse to their last segment) */
+    let mut tag_map: HashMap<String, Vec<LinkSummary>> = HashMap::new();
+    for file in &index.markdown_files {
+        let Some(tags) = file.frontmatter.tags.as_deref() else {
+            continue;
+        };
+        let unique_tags: HashSet<String> = tags
+            .iter()
+            .filter_map(|t| t.split('/').last().map(String::from))
+            .collect();
+        for tag in unique_tags {
+            tag_map.entry(tag).or_default().push(LinkSummary {
+                title: file.title.clone(),
+                output_path: file.output_path.clone(),
+            });
+        }
+    }
+
+    let tags_dir = format!("{}/tags", *OUTPUT_DIR);
+    let _ = fs::create_dir_all(&tags_dir);
+
+    let mut tag_pairs: Vec<(String, Vec<LinkSummary>)> = tag_map.into_iter().collect();
+    tag_pairs.sort_by(|a, b| a.0.cmp(&b.0));
+
+    for (tag, links) in &tag_pairs {
+        let tag_file_create = fs::File::create(format!("{}/{}.html", tags_dir, tag));
+
+        match tag_file_create {
+            Ok(mut tag_file) => {
+                let mut tag_context = Context::new();
+                tag_context.insert("output_dir", &*OUTPUT_DIR);
+                tag_context.insert("tag", tag);
+                tag_context.insert("links", links);
+
+                let content = TERA_ENGINE.render("tag.html", &tag_context).unwrap();
+                let _ = tag_file.write_all(&content.into_bytes());
+            }
+            Err(err) => tracing::error!("{}", err),
+        }
+    }
+
+    let tags_index_create = fs::File::create(format!("{}/index.html", tags_dir));
+
+    if let Ok(mut tags_index_file) = tags_index_create {
+        let mut tags_index_context = Context::new();
+        tags_index_context.insert("output_dir", &*OUTPUT_DIR);
+        let tag_names: Vec<&String> = tag_pairs.iter().map(|(tag, _)| tag).collect();
+        tags_index_context.insert("tags", &tag_names);
+
+        let content = TERA_ENGINE
+            .render("tags_index.html", &tags_index_context)
+            .unwrap();
+        let _ = tags_index_file.write_all(&content.into_bytes());
+    } else if let Err(err) = tags_index_create {
+        tracing::error!("{}", err);
+    }
 
     let index_file_create = fs::File::create(format!("{}/index.html", *OUTPUT_DIR));
 

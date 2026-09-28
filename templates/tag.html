@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block nav_links %}
+{% for link in links | sort(attribute="title") %}
+<li class="last:pb-2">
+  <a href="/{{ link.output_path }}" class="text-white"> {{ link.title }} </a>
+</li>
+{% endfor %}
+{% endblock nav_links %}
+{% block content %}
+<div class="flex w-full flex-col gap-y-4 p-8 max-h-full overflow-y-auto">
+  <h2 class="text-3xl font-bold">Tag: {{ tag }}</h2>
+  <ul class="border rounded-md w-full overflow-hidden border-zinc-800">
+    {% for link in links | sort(attribute="title") %}
+    <li class="odd:bg-zinc-800 p-1.5">
+      <a
+        href="/{{ link.output_path }}"
+        class="text-sky-400 text-base hover:text-sky-600 transition-colors w-full"
+      >
+        {{ link.title }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock content %}
