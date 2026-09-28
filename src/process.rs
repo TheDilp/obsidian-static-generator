@@ -1,5 +1,6 @@
-use std::{fs, io::Write, path::Path};
+use std::{collections::HashSet, fs, io::Write, path::Path};
 
+use pulldown_cmark::{Event, LinkType, Tag, TagEnd};
 use tera::Context;
 use unidecode::unidecode;
 
@@ -9,15 +10,37 @@ use crate::{
     models::{file_index::FileIndex, markdown_file::MarkdownFile},
 };
 
+fn is_wikilink_published(dest_url: &str, published_titles: &HashSet<String>) -> bool {
+    let basename = dest_url.rsplit('/').next().unwrap_or(dest_url);
+    published_titles.contains(&unidecode(basename))
+}
+
 pub fn render_file(
     markdown_file: &MarkdownFile,
     file_index: &FileIndex,
 ) -> Result<String, FileRenderError> {
     let parser = pulldown_cmark::Parser::new_ext(&markdown_file.content, *MARKDOWN_PARSER_OPTIONS);
 
+    let mut in_unpublished_link = false;
+    let events = parser.filter_map(|event| match event {
+        Event::Start(Tag::Link {
+            link_type: LinkType::WikiLink { .. },
+            ref dest_url,
+            ..
+        }) if !is_wikilink_published(dest_url, &file_index.published_titles) => {
+            in_unpublished_link = true;
+            None
+        }
+        Event::End(TagEnd::Link) if in_unpublished_link => {
+            in_unpublished_link = false;
+            None
+        }
+        other => Some(other),
+    });
+
     let mut html_output = String::new();
 
-    pulldown_cmark::html::push_html(&mut html_output, parser);
+    pulldown_cmark::html::push_html(&mut html_output, events);
 
     let frontmatter = &markdown_file.frontmatter;
 

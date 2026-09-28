@@ -28,6 +28,7 @@ pub struct FileIndex {
     pub image_files: Vec<ImageFileLink>,
     pub markdown_image_files: HashSet<String>,
     pub image_lookup: HashMap<String, usize>,
+    pub published_titles: HashSet<String>,
 }
 
 impl FileIndex {
@@ -127,6 +128,7 @@ impl FileIndex {
                                 title: new_file.title.clone(),
                                 output_path: new_file.output_path.clone(),
                             });
+                            self.published_titles.insert(unidecode(&new_file.title));
                             self.markdown_files.push(new_file);
                         }
                     }
