@@ -22,7 +22,17 @@ pub fn render_file(
     let parser = pulldown_cmark::Parser::new_ext(&markdown_file.content, *MARKDOWN_PARSER_OPTIONS);
 
     let mut in_unpublished_link = false;
+    let mut in_code_block = false;
     let events = parser.filter_map(|event| match event {
+        Event::Start(Tag::CodeBlock(_)) => {
+            in_code_block = true;
+            None
+        }
+        Event::End(TagEnd::CodeBlock) => {
+            in_code_block = false;
+            None
+        }
+        _ if in_code_block => None,
         Event::Start(Tag::Link {
             link_type: LinkType::WikiLink { .. },
             ref dest_url,
