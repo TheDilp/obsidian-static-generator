@@ -184,8 +184,8 @@ impl FileIndex {
                             new_file.images = fm.image.unwrap_or_default();
 
                             for img in &new_file.images {
-                                self.markdown_image_files
-                                    .insert(img.replace("[[", "").replace("]]", ""));
+                                let clean_name = img.replace("[[", "").replace("]]", "");
+                                self.markdown_image_files.insert(unidecode(&clean_name));
                             }
 
                             self.link_summaries.push(LinkSummary {
@@ -235,7 +235,7 @@ impl FileIndex {
 
     pub fn remove_unpublished_images(&mut self) {
         self.image_files
-            .retain(|img| self.markdown_image_files.contains(&img.title));
+            .retain(|img| self.markdown_image_files.contains(&unidecode(&img.title)));
 
         self.image_lookup = self
             .image_files
