@@ -1,7 +1,10 @@
 use std::sync::LazyLock;
 
+use gray_matter::{Matter, engine::YAML};
 use pulldown_cmark::Options;
 use tera::Tera;
+
+pub static MATTER: LazyLock<Matter<YAML>> = LazyLock::new(Matter::<YAML>::new);
 pub static TERA_ENGINE: LazyLock<Tera> = LazyLock::new(|| {
     //* Load templates */
     let mut tera = Tera::new();
