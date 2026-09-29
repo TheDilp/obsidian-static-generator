@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex h-full w-full flex-col overflow-hidden bg-ink">
+  <header class="shrink-0 border-b border-hairline px-6 py-6 sm:px-10 sm:py-8">
+    <p class="font-mono text-xs uppercase tracking-[0.3em] text-lexicon-dim">
+      Every connection
+    </p>
+    <h1 class="mt-3 font-serif text-4xl italic text-parchment sm:text-5xl">
+      Graph
+    </h1>
+    <p class="mt-3 font-mono text-sm text-lexicon-dim">
+      {{ node_count }} {% if node_count == 1 %}entry{% else %}entries{% endif %}, {{ edge_count }} {% if edge_count == 1 %}connection{% else %}connections{% endif %}
+    </p>
+  </header>
+
+  <div id="graph-viewport" class="relative min-h-0 flex-1">
+    <canvas id="graph-canvas" class="absolute inset-0 h-full w-full touch-none"></canvas>
+
+    <div class="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-4 sm:p-6">
+      <label class="group pointer-events-auto relative block w-full max-w-[16rem]">
+        <span class="sr-only">Filter notes</span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 16 16"
+          fill="none"
+          class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-lexicon-dim transition-colors group-focus-within:text-gold"
+        >
+          <circle cx="6.5" cy="6.5" r="4.75" stroke="currentColor" stroke-width="1.25" />
+          <path d="M10.1 10.1L14 14" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
+        </svg>
+        <input
+          type="search"
+          id="graph-filter-input"
+          placeholder="Filter notes&hellip;"
+          autocomplete="off"
+          class="w-full rounded-full border border-hairline-strong bg-ink/70 py-1.5 pl-9 pr-3 font-mono text-xs text-lexicon placeholder:text-lexicon-dim backdrop-blur-sm transition-colors [&::-webkit-search-cancel-button]:hidden focus:border-gold focus:bg-ink focus:outline-none"
+        />
+      </label>
+
+      <button
+        type="button"
+        id="graph-reset-view"
+        class="pointer-events-auto shrink-0 rounded-full border border-hairline-strong bg-ink/70 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.15em] text-lexicon-dim backdrop-blur-sm transition-colors hover:border-gold hover:text-gold"
+      >
+        Reset view
+      </button>
+    </div>
+
+    <div
+      id="graph-tooltip"
+      class="pointer-events-none absolute z-10 hidden max-w-[14rem] rounded-md border border-hairline-strong bg-panel/95 px-3 py-2 font-mono text-xs text-lexicon shadow-lg"
+    ></div>
+
+    <div class="pointer-events-none absolute bottom-4 right-4 z-10 w-56 sm:bottom-6 sm:right-6">
+      <div class="pointer-events-auto overflow-hidden rounded-md border border-hairline-strong bg-panel/90 backdrop-blur-sm">
+        <button
+          type="button"
+          id="graph-forces-toggle"
+          aria-expanded="false"
+          class="flex w-full items-center gap-2 px-4 py-3 font-mono text-xs uppercase tracking-[0.15em] text-lexicon-dim transition-colors hover:text-gold"
+        >
+          <svg
+            id="graph-forces-chevron"
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            fill="none"
+            class="h-3 w-3 -rotate-90 transition-transform duration-200"
+          >
+            <path d="M4 2l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Forces
+        </button>
+        <div id="graph-forces-body" class="hidden space-y-4 border-t border-hairline px-4 py-4">
+          <div>
+            <div class="flex items-baseline justify-between font-mono text-xs text-lexicon-dim">
+              <span>Center force</span>
+              <span id="graph-force-center-value">0.05</span>
+            </div>
+            <input
+              type="range"
+              id="graph-force-center"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.05"
+              class="mt-1.5 w-full accent-gold"
+            />
+          </div>
+          <div>
+            <div class="flex items-baseline justify-between font-mono text-xs text-lexicon-dim">
+              <span>Repel force</span>
+              <span id="graph-force-repel-value">45</span>
+            </div>
+            <input
+              type="range"
+              id="graph-force-repel"
+              min="0"
+              max="150"
+              step="1"
+              value="45"
+              class="mt-1.5 w-full accent-gold"
+            />
+          </div>
+          <div>
+            <div class="flex items-baseline justify-between font-mono text-xs text-lexicon-dim">
+              <span>Link force</span>
+              <span id="graph-force-link-strength-value">0.90</span>
+            </div>
+            <input
+              type="range"
+              id="graph-force-link-strength"
+              min="0"
+              max="2"
+              step="0.01"
+              value="0.9"
+              class="mt-1.5 w-full accent-gold"
+            />
+          </div>
+          <div>
+            <div class="flex items-baseline justify-between font-mono text-xs text-lexicon-dim">
+              <span>Link distance</span>
+              <span id="graph-force-link-distance-value">32</span>
+            </div>
+            <input
+              type="range"
+              id="graph-force-link-distance"
+              min="5"
+              max="150"
+              step="1"
+              value="32"
+              class="mt-1.5 w-full accent-gold"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p
+      id="graph-empty-state"
+      class="pointer-events-none absolute inset-0 hidden items-center justify-center font-mono text-sm text-lexicon-dim"
+    >
+      No published notes are linked to each other yet.
+    </p>
+  </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script src="https://d3js.org/d3-quadtree.v3.min.js"></script>
+<script src="https://d3js.org/d3-dispatch.v3.min.js"></script>
+<script src="https://d3js.org/d3-timer.v3.min.js"></script>
+<script src="https://d3js.org/d3-force.v3.min.js"></script>
+<script>
+  window.__GRAPH_DATA_URL__ = "/{{output_dir}}/graph.json";
+</script>
+<script src="/{{output_dir}}/graph.js"></script>
+{% endblock scripts %}

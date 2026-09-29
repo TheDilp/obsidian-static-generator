@@ -61,11 +61,12 @@ fn render_property_value(value: &str, file_index: &FileIndex) -> String {
 pub fn render_file(
     markdown_file: &MarkdownFile,
     file_index: &FileIndex,
-) -> Result<String, FileRenderError> {
+) -> Result<(String, Vec<usize>), FileRenderError> {
     let parser = pulldown_cmark::Parser::new_ext(&markdown_file.content, *MARKDOWN_PARSER_OPTIONS);
 
     let mut in_unpublished_link = false;
     let mut in_code_block = false;
+    let mut linked_indices: Vec<usize> = Vec::new();
     let events = parser.filter_map(|event| match event {
         Event::Start(Tag::CodeBlock(_)) => {
             in_code_block = true;
@@ -83,18 +84,19 @@ pub fn render_file(
             ref id,
         }) => {
             let basename = dest_url.rsplit('/').next().unwrap_or(dest_url);
-            let resolved_url = file_index
-                .link_lookup
-                .get(&unidecode(basename))
-                .map(|&idx| format!("/{}", file_index.link_summaries[idx].output_path));
+            let resolved = file_index.link_lookup.get(&unidecode(basename)).copied();
 
-            match resolved_url {
-                Some(resolved_url) => Some(Event::Start(Tag::Link {
-                    link_type: LinkType::WikiLink { has_pothole: false },
-                    dest_url: CowStr::from(resolved_url),
-                    title: title.clone(),
-                    id: id.clone(),
-                })),
+            match resolved {
+                Some(idx) => {
+                    linked_indices.push(idx);
+                    let resolved_url = format!("/{}", file_index.link_summaries[idx].output_path);
+                    Some(Event::Start(Tag::Link {
+                        link_type: LinkType::WikiLink { has_pothole: false },
+                        dest_url: CowStr::from(resolved_url),
+                        title: title.clone(),
+                        id: id.clone(),
+                    }))
+                }
                 None => {
                     in_unpublished_link = true;
                     None
@@ -178,6 +180,6 @@ pub fn render_file(
     if let Err(err) = write_result {
         Err(FileRenderError::Write(err))
     } else {
-        Ok(new_path.to_owned())
+        Ok((new_path.to_owned(), linked_indices))
     }
 }

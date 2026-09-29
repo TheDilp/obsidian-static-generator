@@ -7,11 +7,34 @@ use std::{
 use rayon::prelude::*;
 use tera::Context;
 
+use serde::Serialize;
+
 use crate::{
     consts::{OUTPUT_DIR, TERA_ENGINE},
     models::{file_index::FileIndex, markdown_file::LinkSummary},
     process::render_file,
 };
+
+#[derive(Serialize)]
+struct GraphNode {
+    id: usize,
+    title: String,
+    path: String,
+    tags: Vec<String>,
+    degree: usize,
+}
+
+#[derive(Serialize)]
+struct GraphEdge {
+    source: usize,
+    target: usize,
+}
+
+#[derive(Serialize)]
+struct Graph {
+    nodes: Vec<GraphNode>,
+    links: Vec<GraphEdge>,
+}
 
 mod consts;
 mod error;
@@ -32,6 +55,7 @@ fn main() {
     let _ = fs::copy("static/output.css", format!("{}/output.css", output_path));
     let _ = fs::copy("static/search.js", format!("{}/search.js", output_path));
     let _ = fs::copy("static/index.js", format!("{}/index.js", output_path));
+    let _ = fs::copy("static/graph.js", format!("{}/graph.js", output_path));
 
     let start = std::time::Instant::now();
     tracing::info!("🚀 STARTED PROCESSING");
@@ -69,6 +93,86 @@ fn main() {
         error_count,
         start.elapsed()
     );
+
+    //* Build the note graph from resolved wikilinks discovered while rendering */
+    let mut edge_set: HashSet<(usize, usize)> = HashSet::new();
+    for (source_idx, result) in render_results.iter().enumerate() {
+        let Ok((_, linked_indices)) = result else {
+            continue;
+        };
+        for &target_idx in linked_indices {
+            if target_idx == source_idx {
+                continue;
+            }
+            let pair = (source_idx.min(target_idx), source_idx.max(target_idx));
+            edge_set.insert(pair);
+        }
+    }
+
+    let mut degree: HashMap<usize, usize> = HashMap::new();
+    for &(a, b) in &edge_set {
+        *degree.entry(a).or_default() += 1;
+        *degree.entry(b).or_default() += 1;
+    }
+
+    let graph_nodes: Vec<GraphNode> = index
+        .markdown_files
+        .iter()
+        .enumerate()
+        .map(|(idx, file)| {
+            let tags: Vec<String> = file
+                .frontmatter
+                .tags
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .filter_map(|t| t.split('/').last().map(String::from))
+                .collect();
+
+            GraphNode {
+                id: idx,
+                title: file.title.clone(),
+                path: file.output_path.clone(),
+                tags,
+                degree: degree.get(&idx).copied().unwrap_or_default(),
+            }
+        })
+        .collect();
+
+    let graph_edges: Vec<GraphEdge> = edge_set
+        .into_iter()
+        .map(|(source, target)| GraphEdge { source, target })
+        .collect();
+
+    let node_count = graph_nodes.len();
+    let edge_count = graph_edges.len();
+
+    let graph = Graph {
+        nodes: graph_nodes,
+        links: graph_edges,
+    };
+
+    match serde_json::to_string(&graph) {
+        Ok(graph_json) => {
+            let _ = fs::write(format!("{}/graph.json", *OUTPUT_DIR), graph_json);
+        }
+        Err(err) => tracing::error!("{}", err),
+    }
+
+    let graph_page_create = fs::File::create(format!("{}/graph.html", *OUTPUT_DIR));
+
+    if let Ok(mut graph_page_file) = graph_page_create {
+        let mut graph_context = Context::new();
+        graph_context.insert("output_dir", &*OUTPUT_DIR);
+        graph_context.insert("section", "graph");
+        graph_context.insert("node_count", &node_count);
+        graph_context.insert("edge_count", &edge_count);
+
+        let content = TERA_ENGINE.render("graph.html", &graph_context).unwrap();
+        let _ = graph_page_file.write_all(&content.into_bytes());
+    } else if let Err(err) = graph_page_create {
+        tracing::error!("{}", err);
+    }
 
     //* Build tag -> articles map (nested tags collapse to their last segment) */
     let mut tag_map: HashMap<String, Vec<LinkSummary>> = HashMap::new();
