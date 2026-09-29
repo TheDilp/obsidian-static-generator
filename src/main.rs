@@ -36,6 +36,7 @@ struct Graph {
     links: Vec<GraphEdge>,
 }
 
+mod canvas;
 mod consts;
 mod error;
 mod models;
@@ -56,6 +57,7 @@ fn main() {
     let _ = fs::copy("static/search.js", format!("{}/search.js", output_path));
     let _ = fs::copy("static/index.js", format!("{}/index.js", output_path));
     let _ = fs::copy("static/graph.js", format!("{}/graph.js", output_path));
+    let _ = fs::copy("static/canvas.js", format!("{}/canvas.js", output_path));
 
     let start = std::time::Instant::now();
     tracing::info!("🚀 STARTED PROCESSING");
@@ -63,6 +65,7 @@ fn main() {
     //* Index files */
     let mut index = FileIndex::default();
     index.create_index(&root_dir, &root_dir);
+    canvas::prepare(&mut index);
     tracing::info!("🏁 FINISHED INDEXING IN {:?}", start.elapsed());
 
     index.remove_unpublished_images();
@@ -94,6 +97,12 @@ fn main() {
         start.elapsed()
     );
 
+    for file in &index.canvas_files {
+        if let Err(error) = canvas::render(file, &index) {
+            tracing::error!(path = %file.relative_path, %error, "Failed to render canvas");
+        }
+    }
+
     //* Build the note graph from resolved wikilinks discovered while rendering */
     let mut edge_set: HashSet<(usize, usize)> = HashSet::new();
     for (source_idx, result) in render_results.iter().enumerate() {
@@ -101,7 +110,7 @@ fn main() {
             continue;
         };
         for &target_idx in linked_indices {
-            if target_idx == source_idx {
+            if target_idx == source_idx || target_idx >= index.markdown_files.len() {
                 continue;
             }
             let pair = (source_idx.min(target_idx), source_idx.max(target_idx));
@@ -126,7 +135,7 @@ fn main() {
                 .as_deref()
                 .unwrap_or_default()
                 .iter()
-                .filter_map(|t| t.split('/').last().map(String::from))
+                .filter_map(|t| t.split('/').next_back().map(String::from))
                 .collect();
 
             GraphNode {
@@ -182,7 +191,7 @@ fn main() {
         };
         let unique_tags: HashSet<String> = tags
             .iter()
-            .filter_map(|t| t.split('/').last().map(String::from))
+            .filter_map(|t| t.split('/').next_back().map(String::from))
             .collect();
         for tag in unique_tags {
             tag_map.entry(tag).or_default().push(LinkSummary {

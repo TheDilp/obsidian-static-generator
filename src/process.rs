@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-fn escape_html(text: &str) -> String {
+pub(crate) fn escape_html(text: &str) -> String {
     text.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
@@ -62,10 +62,61 @@ pub fn render_file(
     markdown_file: &MarkdownFile,
     file_index: &FileIndex,
 ) -> Result<(String, Vec<usize>), FileRenderError> {
-    let parser = pulldown_cmark::Parser::new_ext(&markdown_file.content, *MARKDOWN_PARSER_OPTIONS);
+    let (html_output, linked_indices) = render_markdown(&markdown_file.content, file_index);
+    let frontmatter = &markdown_file.frontmatter;
+
+    let filtered_properties: Vec<Property> = markdown_file
+        .properties
+        .iter()
+        .filter(|p| p.key.to_lowercase() != "tags")
+        .map(|p| Property {
+            key: p.key.clone(),
+            value: render_property_value(&p.value, file_index),
+        })
+        .collect();
+
+    let mut context = Context::new();
+    context.insert("title", &markdown_file.title);
+    context.insert("content", &html_output);
+    context.insert("links", &file_index.link_summaries);
+    context.insert("output_dir", &*OUTPUT_DIR);
+    context.insert("properties", &filtered_properties);
+    if let Some(image) = frontmatter.image.as_ref().and_then(|images| images.first()) {
+        let image_title = image.replace("[[", "").replace("]]", "");
+        let image_file = file_index
+            .image_lookup
+            .get(&unidecode(image_title.as_str()))
+            .map(|&idx| &file_index.image_files[idx]);
+        if let Some(image_file) = image_file {
+            context.insert("image", &image_file.link);
+        }
+    }
+    let unique_tags: HashSet<String> = frontmatter
+        .tags
+        .as_deref()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|tag| tag.split('/').next_back().map(String::from))
+        .collect();
+    context.insert("tags", &unique_tags);
+    let new_path = &markdown_file.output_path;
+    if let Some(parent) = Path::new(new_path).parent() {
+        fs::create_dir_all(parent).map_err(FileRenderError::Create)?;
+    }
+    let rendered = TERA_ENGINE.render("article.html", &context)?;
+    let mut file = fs::File::create(new_path)?;
+    file.write_all(rendered.as_bytes())
+        .map_err(FileRenderError::Write)?;
+    Ok((new_path.to_owned(), linked_indices))
+}
+
+/// Shared by articles, canvas text cards, and note previews.
+pub(crate) fn render_markdown(content: &str, file_index: &FileIndex) -> (String, Vec<usize>) {
+    let parser = pulldown_cmark::Parser::new_ext(content, *MARKDOWN_PARSER_OPTIONS);
 
     let mut in_unpublished_link = false;
     let mut in_code_block = false;
+    let mut in_missing_image = false;
     let mut linked_indices: Vec<usize> = Vec::new();
     let events = parser.filter_map(|event| match event {
         Event::Start(Tag::CodeBlock(_)) => {
@@ -83,8 +134,7 @@ pub fn render_file(
             ref title,
             ref id,
         }) => {
-            let basename = dest_url.rsplit('/').next().unwrap_or(dest_url);
-            let resolved = file_index.link_lookup.get(&unidecode(basename)).copied();
+            let resolved = crate::canvas::resolve_page(file_index, dest_url);
 
             match resolved {
                 Some(idx) => {
@@ -107,79 +157,63 @@ pub fn render_file(
             in_unpublished_link = false;
             None
         }
+        // Raw HTML cannot execute inside generated cards or articles.
+        Event::Html(_) | Event::InlineHtml(_) => None,
+        Event::Start(Tag::Image {
+            link_type,
+            dest_url,
+            title,
+            id,
+        }) => {
+            let image = crate::canvas::resolve_image(file_index, &dest_url);
+            in_missing_image = image.is_none();
+            image.map(|image| {
+                Event::Start(Tag::Image {
+                    link_type,
+                    dest_url: CowStr::from(format!("/{}", image.link)),
+                    title,
+                    id,
+                })
+            })
+        }
+        Event::End(TagEnd::Image) if in_missing_image => {
+            in_missing_image = false;
+            None
+        }
+        Event::Start(Tag::Link {
+            link_type,
+            dest_url,
+            title,
+            id,
+        }) => {
+            let url = if dest_url.ends_with(".md") || dest_url.ends_with(".canvas") {
+                crate::canvas::resolve_page(file_index, &dest_url)
+                    .map(|idx| format!("/{}", file_index.link_summaries[idx].output_path))
+            } else {
+                let lower = dest_url.to_ascii_lowercase();
+                (!lower.contains(':')
+                    || lower.starts_with("https://")
+                    || lower.starts_with("http://")
+                    || lower.starts_with("mailto:"))
+                .then(|| dest_url.to_string())
+            };
+            if let Some(url) = url {
+                Some(Event::Start(Tag::Link {
+                    link_type,
+                    dest_url: CowStr::from(url),
+                    title,
+                    id,
+                }))
+            } else {
+                in_unpublished_link = true;
+                None
+            }
+        }
         other => Some(other),
     });
 
     let mut html_output = String::new();
 
     pulldown_cmark::html::push_html(&mut html_output, events);
-    let frontmatter = &markdown_file.frontmatter;
-
-    let filtered_properties: Vec<Property> = markdown_file
-        .properties
-        .iter()
-        .filter(|p| p.key.to_lowercase() != "tags")
-        .map(|p| Property {
-            key: p.key.clone(),
-            value: render_property_value(&p.value, file_index),
-        })
-        .collect();
-
-    let mut context = Context::new();
-    context.insert("title", &markdown_file.title);
-    context.insert("content", &html_output);
-    context.insert("links", &file_index.link_summaries);
-    context.insert("output_dir", &*OUTPUT_DIR);
-    context.insert("properties", &filtered_properties);
-    if let Some(image) = frontmatter.image.as_ref().and_then(|images| images.first()) {
-        let image_title = image.replace("[[", "").replace("]]", "");
-
-        let image_file = file_index
-            .image_lookup
-            .get(&unidecode(image_title.as_str()))
-            .map(|&idx| &file_index.image_files[idx]);
-
-        if let Some(image_file) = image_file {
-            context.insert("image", &image_file.link);
-        }
-    }
-
-    let tags_collection = frontmatter.tags.as_deref().map(|tags| {
-        tags.iter()
-            .filter_map(|tag| tag.split("/").last().map(|t| t.to_string()))
-    });
-
-    let unique_tags: HashSet<String> = match tags_collection {
-        Some(tags) => tags.collect(),
-        None => HashSet::default(),
-    };
-
-    context.insert("tags", &unique_tags);
-
-    let new_path = &markdown_file.output_path;
-
-    if let Some(dirs_path) = Path::new(new_path).parent() {
-        let _ = fs::create_dir_all(dirs_path);
-    }
-
-    let render_file = fs::File::create(new_path);
-
-    if let Err(err) = render_file {
-        return Err(FileRenderError::Create(err));
-    }
-    let rendered = TERA_ENGINE.render("article.html", &context);
-
-    if let Err(err) = rendered {
-        return Err(FileRenderError::Render(err));
-    }
-    let rendered = rendered.unwrap();
-
-    let mut render_file = render_file.unwrap();
-    let write_result = render_file.write_all(&rendered.into_bytes());
-
-    if let Err(err) = write_result {
-        Err(FileRenderError::Write(err))
-    } else {
-        Ok((new_path.to_owned(), linked_indices))
-    }
+    (html_output, linked_indices)
 }

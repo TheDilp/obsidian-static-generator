@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="canvas-shell" class="flex min-h-0 flex-1 flex-col bg-ink text-lexicon">
+  <header class="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-hairline px-6 py-4 sm:px-10">
+    <h1 class="font-serif text-3xl italic text-parchment">{{ title }}</h1>
+    <div id="canvas-controls" class="hidden flex-wrap items-center gap-2" aria-label="Canvas controls">
+      <button type="button" class="min-h-11 min-w-11 rounded-md border border-hairline-strong bg-panel px-3 font-mono text-xs text-lexicon hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold" id="canvas-zoom-out" aria-label="Zoom out" aria-controls="canvas-viewport">−</button>
+      <button type="button" class="min-h-11 min-w-11 rounded-md border border-hairline-strong bg-panel px-3 font-mono text-xs text-lexicon hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold" id="canvas-zoom-in" aria-label="Zoom in" aria-controls="canvas-viewport">+</button>
+      <button type="button" class="min-h-11 min-w-11 rounded-md border border-hairline-strong bg-panel px-3 font-mono text-xs text-lexicon hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold" id="canvas-fit" aria-controls="canvas-viewport">Fit to screen</button>
+      <button type="button" class="min-h-11 min-w-11 rounded-md border border-hairline-strong bg-panel px-3 font-mono text-xs text-lexicon hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold" id="canvas-fullscreen" aria-pressed="false">Fullscreen</button>
+    </div>
+  </header>
+  <p id="canvas-help" class="sr-only">Drag the background to pan. Use the zoom buttons, mouse wheel, or pinch gesture to zoom. With the canvas focused, use arrow keys to pan, plus and minus to zoom, and Home to fit.</p>
+  <div id="canvas-viewport" class="relative min-h-0 flex-1 touch-none overflow-hidden focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gold" tabindex="0" role="region" aria-label="{{ title }} canvas" aria-describedby="canvas-help" data-bounds="{{ bounds }}">
+    <div id="canvas-world" class="absolute left-0 top-0 h-px w-px origin-top-left">{{ diagram | safe }}</div>
+    {% if node_count == 0 %}<p class="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">No published cards to display.</p>{% endif %}
+    <output id="canvas-zoom-status" class="pointer-events-none absolute bottom-4 right-4 rounded border border-hairline bg-panel px-3 py-2 font-mono text-xs" aria-live="polite">100%</output>
+  </div>
+</div>
+{% endblock content %}
+{% block scripts %}
+<script src="/{{ output_dir }}/canvas.js" defer></script>
+{% endblock scripts %}

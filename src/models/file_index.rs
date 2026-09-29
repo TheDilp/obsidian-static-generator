@@ -34,7 +34,11 @@ fn pod_to_display_string(pod: &Pod) -> Option<String> {
         Pod::String(value) => Some(value.clone()),
         Pod::Integer(value) => Some(value.to_string()),
         Pod::Float(value) => Some(value.to_string()),
-        Pod::Boolean(value) => Some(if *value { "Yes".to_string() } else { "No".to_string() }),
+        Pod::Boolean(value) => Some(if *value {
+            "Yes".to_string()
+        } else {
+            "No".to_string()
+        }),
         Pod::Array(items) => {
             let joined = items
                 .iter()
@@ -84,6 +88,9 @@ fn build_properties(raw_matter: &str) -> Vec<Property> {
 
 #[derive(Default)]
 pub struct FileIndex {
+    pub root_dir: String,
+    pub canvas_files: Vec<crate::canvas::CanvasFile>,
+    pub image_dependencies: HashSet<String>,
     pub markdown_files: Vec<MarkdownFile>,
     pub link_summaries: Vec<LinkSummary>,
     pub image_files: Vec<ImageFileLink>,
@@ -95,6 +102,7 @@ pub struct FileIndex {
 
 impl FileIndex {
     pub fn create_index(&mut self, dir: &str, root_dir: &str) {
+        self.root_dir = root_dir.to_string();
         let content = get_valid_entries_from_dir(dir);
 
         for entry in content {
@@ -123,6 +131,13 @@ impl FileIndex {
                 && let Ok(mut file) = fs::File::open(&path)
             {
                 match extension {
+                    "canvas" => match crate::canvas::CanvasFile::read(&path, root_dir) {
+                        Ok(Some(canvas)) => self.canvas_files.push(canvas),
+                        Ok(None) => {}
+                        Err(error) => {
+                            tracing::warn!(path = %path.display(), %error, "Invalid canvas")
+                        }
+                    },
                     "md" => {
                         let metadata = file.metadata();
                         let mut file_content = String::new();
@@ -192,15 +207,13 @@ impl FileIndex {
                                 title: new_file.title.clone(),
                                 output_path: new_file.output_path.clone(),
                             });
-                            self.link_lookup.insert(
-                                unidecode(&new_file.title),
-                                self.link_summaries.len() - 1,
-                            );
+                            self.link_lookup
+                                .insert(unidecode(&new_file.title), self.link_summaries.len() - 1);
                             self.published_titles.insert(unidecode(&new_file.title));
                             self.markdown_files.push(new_file);
                         }
                     }
-                    "png" | "jpg" | "jpeg" | "webp" | "gif" => {
+                    "png" | "jpg" | "jpeg" | "webp" | "gif" | "avif" => {
                         let path_str = path.to_str();
 
                         if path_str.is_none() {
@@ -234,8 +247,10 @@ impl FileIndex {
     }
 
     pub fn remove_unpublished_images(&mut self) {
-        self.image_files
-            .retain(|img| self.markdown_image_files.contains(&unidecode(&img.title)));
+        self.image_files.retain(|img| {
+            self.markdown_image_files.contains(&unidecode(&img.title))
+                || self.image_dependencies.contains(&img.original_path)
+        });
 
         self.image_lookup = self
             .image_files
